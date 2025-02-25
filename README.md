@@ -16,7 +16,7 @@ A modern web application for searching, managing, and batch formatting SVG logos
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/svgLogos.git
+git clone https://github.com/ppzgenome/svgLogos.git
 cd svgLogos
 
 # Install dependencies

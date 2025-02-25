@@ -40,7 +40,7 @@ We welcome feature suggestions! Please create an issue with:
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/svgLogos.git
+git clone https://github.com/ppzgenome/svgLogos.git
 cd svgLogos
 
 # Install dependencies
