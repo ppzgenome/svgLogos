@@ -45,7 +45,7 @@ export const ValueProposition = () => {
           viewport={{ once: true }}
           className="grid grid-cols-1 md:grid-cols-3 gap-8"
         >
-          {valueCards.map((card, index) => {
+          {valueCards.map((card) => {
             const Icon = card.icon
             return (
               <motion.div
