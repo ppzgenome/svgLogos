@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefreshCw, FiLock, FiUnlock } from 'react-icons/fi'
+import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefreshCw } from 'react-icons/fi'
+// Unused icons would be imported here if needed
 import { searchMultipleLogos, searchLogoAlternative } from '../services/logoService'
 import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip } from '../services/fileService'
 import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, resetSvgDimensions, GradientDefinition } from '../services/svgService'
@@ -49,7 +50,7 @@ export const WorkArea = () => {
   const [colorOperationType, setColorOperationType] = useState<'apply' | 'gradient' | 'reset' | null>(null)
   const [isChangingDimensions, setIsChangingDimensions] = useState(false)
   const [displayUnit, setDisplayUnit] = useState<DimensionUnit>('px')
-  const [batchPresetUnit, setBatchPresetUnit] = useState<DimensionUnit>('px')
+  const [_batchPresetUnit, setBatchPresetUnit] = useState<DimensionUnit>('px')
   const [multiWidth, setMultiWidth] = useState(0)
   const [multiHeight, setMultiHeight] = useState(0)
   const [multiLockAspectRatio, setMultiLockAspectRatio] = useState(true)
@@ -84,7 +85,7 @@ export const WorkArea = () => {
   }, [selectedLogos, logos]);
   
   // Handle width change for multiple logos
-  const handleMultiWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleMultiWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newWidth = parseInt(e.target.value, 10) || 0;
     setMultiWidth(newWidth);
     
@@ -98,7 +99,7 @@ export const WorkArea = () => {
   };
   
   // Handle height change for multiple logos
-  const handleMultiHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleMultiHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newHeight = parseInt(e.target.value, 10) || 0;
     setMultiHeight(newHeight);
     
@@ -112,13 +113,13 @@ export const WorkArea = () => {
   };
   
   // Handle dimension input blur for multiple logos
-  const handleMultiDimensionBlur = () => {
+  const _handleMultiDimensionBlur = () => {
     // Apply dimensions when input loses focus
     applyDimensionsToSelectedLogos({ width: multiWidth, height: multiHeight });
   };
   
   // Handle dimension input key down for multiple logos
-  const handleMultiDimensionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const _handleMultiDimensionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Apply dimensions when Enter key is pressed
     if (e.key === 'Enter') {
       applyDimensionsToSelectedLogos({ width: multiWidth, height: multiHeight });
@@ -126,7 +127,7 @@ export const WorkArea = () => {
   };
   
   // Toggle aspect ratio lock for multiple logos
-  const toggleMultiAspectRatio = () => {
+  const _toggleMultiAspectRatio = () => {
     setMultiLockAspectRatio(!multiLockAspectRatio);
   };
 
@@ -740,7 +741,7 @@ export const WorkArea = () => {
   }
   
   // Apply inch dimensions to selected logos
-  const applyInchDimensionsToSelectedLogos = async (widthInches: number, heightInches: number) => {
+  const _applyInchDimensionsToSelectedLogos = async (widthInches: number, heightInches: number) => {
     // Convert inches to pixels (1 inch = 96 pixels)
     const widthPx = Math.round(widthInches * 96)
     const heightPx = Math.round(heightInches * 96)
@@ -750,7 +751,7 @@ export const WorkArea = () => {
   }
   
   // Apply millimeter dimensions to selected logos
-  const applyMmDimensionsToSelectedLogos = async (widthMm: number, heightMm: number) => {
+  const _applyMmDimensionsToSelectedLogos = async (widthMm: number, heightMm: number) => {
     // Convert mm to pixels (1 mm = 96/25.4 pixels)
     const widthPx = Math.round(widthMm * (96 / 25.4))
     const heightPx = Math.round(heightMm * (96 / 25.4))

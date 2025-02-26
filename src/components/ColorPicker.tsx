@@ -269,7 +269,7 @@ export const ColorPicker = ({
     setIsDragging(true)
   }
   
-  const handleGradientBarClick = (e: React.MouseEvent) => {
+  const handleGradientBarClick = (_e: React.MouseEvent) => {
     if (disabled) return
     
     // When clicking the gradient bar, apply the gradient
