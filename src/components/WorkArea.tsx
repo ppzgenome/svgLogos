@@ -51,7 +51,7 @@ export const WorkArea = () => {
   const [colorOperationType, setColorOperationType] = useState<'apply' | 'gradient' | 'reset' | null>(null)
   const [isChangingDimensions, setIsChangingDimensions] = useState(false)
   const [displayUnit, setDisplayUnit] = useState<DimensionUnit>('px')
-  const [_batchPresetUnit, setBatchPresetUnit] = useState<DimensionUnit>('px')
+  const [_batchPresetUnit, _setBatchPresetUnit] = useState<DimensionUnit>('px')
   const [multiWidth, setMultiWidth] = useState(0)
   const [multiHeight, setMultiHeight] = useState(0)
   const [multiLockAspectRatio, setMultiLockAspectRatio] = useState(true)
