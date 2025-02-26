@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { FiLock, FiUnlock, FiRefreshCw } from 'react-icons/fi'
+import { useState, useEffect, useRef } from 'react'
+import { FiLock, FiUnlock, FiRefreshCw as _FiRefreshCw, FiLoader as _FiLoader } from 'react-icons/fi'
 import { convertPixelsToPhysicalUnits } from '../utils/unitConversion'
 
 // Type for dimension unit selection
@@ -12,6 +12,8 @@ interface DimensionEditorProps {
   onScaleChange?: (scalePercentage: number) => void
   onReset?: () => void
   disabled?: boolean
+  selectionCount?: number
+  noLogos?: boolean
 }
 
 export const DimensionEditor = ({
@@ -20,13 +22,30 @@ export const DimensionEditor = ({
   onChange,
   onScaleChange,
   onReset,
-  disabled = false
+  disabled = false,
+  selectionCount = 1,
+  noLogos = false
 }: DimensionEditorProps) => {
-  const [width, setWidth] = useState(initialDimensions?.width || 0)
-  const [height, setHeight] = useState(initialDimensions?.height || 0)
+  const [width, setWidth] = useState(noLogos ? 0 : (initialDimensions?.width || 0))
+  const [height, setHeight] = useState(noLogos ? 0 : (initialDimensions?.height || 0))
   const [lockAspectRatio, setLockAspectRatio] = useState(true)
   const [aspectRatio, setAspectRatio] = useState(1)
   const [selectedPresetUnit, setSelectedPresetUnit] = useState<DimensionUnit>('px')
+  
+  // Refs for input fields to maintain focus
+  const widthInputRef = useRef<HTMLInputElement>(null)
+  const heightInputRef = useRef<HTMLInputElement>(null)
+  
+  // State to track if we should apply changes
+  const [shouldApplyChanges, setShouldApplyChanges] = useState(false)
+  
+  // Effect to apply changes when shouldApplyChanges is true
+  useEffect(() => {
+    if (shouldApplyChanges) {
+      onChange({ width, height });
+      setShouldApplyChanges(false);
+    }
+  }, [shouldApplyChanges, width, height, onChange]);
 
   // Calculate and store aspect ratio when dimensions change
   useEffect(() => {
@@ -37,6 +56,9 @@ export const DimensionEditor = ({
     }
   }, [initialDimensions])
 
+  // Debounce timer for dimension changes
+  const dimensionChangeTimerRef = useRef<number | null>(null);
+  
   const handleWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newWidth = parseInt(e.target.value, 10) || 0
     setWidth(newWidth)
@@ -44,9 +66,26 @@ export const DimensionEditor = ({
     if (lockAspectRatio && newWidth > 0) {
       const newHeight = Math.round(newWidth / aspectRatio)
       setHeight(newHeight)
-      onChange({ width: newWidth, height: newHeight })
+      
+      // Apply changes with debounce to maintain focus but still update
+      if (dimensionChangeTimerRef.current) {
+        window.clearTimeout(dimensionChangeTimerRef.current);
+      }
+      
+      dimensionChangeTimerRef.current = window.setTimeout(() => {
+        onChange({ width: newWidth, height: newHeight });
+        dimensionChangeTimerRef.current = null;
+      }, 300);
     } else {
-      onChange({ width: newWidth, height })
+      // Apply changes with debounce
+      if (dimensionChangeTimerRef.current) {
+        window.clearTimeout(dimensionChangeTimerRef.current);
+      }
+      
+      dimensionChangeTimerRef.current = window.setTimeout(() => {
+        onChange({ width: newWidth, height });
+        dimensionChangeTimerRef.current = null;
+      }, 300);
     }
   }
 
@@ -57,9 +96,39 @@ export const DimensionEditor = ({
     if (lockAspectRatio && newHeight > 0) {
       const newWidth = Math.round(newHeight * aspectRatio)
       setWidth(newWidth)
-      onChange({ width: newWidth, height: newHeight })
+      
+      // Apply changes with debounce to maintain focus but still update
+      if (dimensionChangeTimerRef.current) {
+        window.clearTimeout(dimensionChangeTimerRef.current);
+      }
+      
+      dimensionChangeTimerRef.current = window.setTimeout(() => {
+        onChange({ width: newWidth, height: newHeight });
+        dimensionChangeTimerRef.current = null;
+      }, 300);
     } else {
-      onChange({ width, height: newHeight })
+      // Apply changes with debounce
+      if (dimensionChangeTimerRef.current) {
+        window.clearTimeout(dimensionChangeTimerRef.current);
+      }
+      
+      dimensionChangeTimerRef.current = window.setTimeout(() => {
+        onChange({ width, height: newHeight });
+        dimensionChangeTimerRef.current = null;
+      }, 300);
+    }
+  }
+  
+  const handleDimensionBlur = () => {
+    // Only call onChange when the input loses focus
+    onChange({ width, height })
+  }
+  
+  const handleDimensionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Call onChange when Enter key is pressed
+    if (e.key === 'Enter') {
+      onChange({ width, height })
+      e.currentTarget.blur()
     }
   }
 
@@ -125,18 +194,22 @@ export const DimensionEditor = ({
   
   // Inch presets (common print sizes)
   const inchPresets = [
-    { label: '0.25×0.25"', width: 0.25, height: 0.25 },
-    { label: '0.5×0.5"', width: 0.5, height: 0.5 },
-    { label: '1×1"', width: 1, height: 1 },
-    { label: '2×2"', width: 2, height: 2 }
+    { label: '0.25×0.25', width: 0.25, height: 0.25 },
+    { label: '0.5×0.5', width: 0.5, height: 0.5 },
+    { label: '1×1', width: 1, height: 1 },
+    { label: '2×2', width: 2, height: 2 },
+    { label: '3×3', width: 3, height: 3 },
+    { label: '4×4', width: 4, height: 4 }
   ]
   
   // Millimeter presets (common metric sizes)
   const mmPresets = [
-    { label: '5×5mm', width: 5, height: 5 },
-    { label: '10×10mm', width: 10, height: 10 },
-    { label: '20×20mm', width: 20, height: 20 },
-    { label: '50×50mm', width: 50, height: 50 }
+    { label: '5×5', width: 5, height: 5 },
+    { label: '10×10', width: 10, height: 10 },
+    { label: '20×20', width: 20, height: 20 },
+    { label: '50×50', width: 50, height: 50 },
+    { label: '75×75', width: 75, height: 75 },
+    { label: '100×100', width: 100, height: 100 }
   ]
 
   // Scale percentages
@@ -145,68 +218,30 @@ export const DimensionEditor = ({
     { label: '75%', value: 75 },
     { label: '100%', value: 100 },
     { label: '150%', value: 150 },
-    { label: '200%', value: 200 }
+    { label: '200%', value: 200 },
+    { label: '500%', value: 500 }
   ]
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-4">
-        <div className="flex flex-col">
-          <label htmlFor="width" className="text-sm text-gray-600 mb-1">Width (px)</label>
-          <div className="flex flex-col">
-            <div className="flex items-center">
-              <input
-                id="width"
-                type="number"
-                min="1"
-                value={width || ''}
-                onChange={handleWidthChange}
-                className="input w-20"
-                disabled={disabled}
-              />
-            </div>
-            {width > 0 && (
-              <div className="text-xs text-gray-500 mt-1">
-                <span>{convertPixelsToPhysicalUnits(width).inches}" / {convertPixelsToPhysicalUnits(width).mm}mm</span>
-              </div>
-            )}
-          </div>
+      <p className="text-sm text-gray-600 mb-4">
+        Select one or more logos to transform:
+      </p>
+      
+      <div>
+        <p className="text-sm text-gray-600 mb-2">Scale</p>
+        <div className="flex flex-wrap gap-2">
+          {scaleOptions.map(option => (
+            <button
+              key={option.label}
+              onClick={() => applyScalePercentage(option.value)}
+              className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+              disabled={disabled || !originalDimensions}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
-        
-        <div className="flex flex-col">
-          <label htmlFor="height" className="text-sm text-gray-600 mb-1">Height (px)</label>
-          <div className="flex flex-col">
-            <div className="flex items-center">
-              <input
-                id="height"
-                type="number"
-                min="1"
-                value={height || ''}
-                onChange={handleHeightChange}
-                className="input w-20"
-                disabled={disabled}
-              />
-            </div>
-            {height > 0 && (
-              <div className="text-xs text-gray-500 mt-1">
-                <span>{convertPixelsToPhysicalUnits(height).inches}" / {convertPixelsToPhysicalUnits(height).mm}mm</span>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <button
-          onClick={toggleAspectRatio}
-          className={`mt-6 p-2 rounded-md ${
-            lockAspectRatio 
-              ? 'bg-primary/10 text-primary' 
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          }`}
-          title={lockAspectRatio ? 'Aspect ratio locked' : 'Aspect ratio unlocked'}
-          disabled={disabled}
-        >
-          {lockAspectRatio ? <FiLock size={18} /> : <FiUnlock size={18} />}
-        </button>
       </div>
       
       <div>
@@ -274,30 +309,79 @@ export const DimensionEditor = ({
         </div>
       </div>
       
-      <div>
-        <p className="text-sm text-gray-600 mb-2">Scale</p>
-        <div className="flex flex-wrap gap-2">
-          {scaleOptions.map(option => (
-            <button
-              key={option.label}
-              onClick={() => applyScalePercentage(option.value)}
-              className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
-              disabled={disabled || !originalDimensions}
-            >
-              {option.label}
-            </button>
-          ))}
+      <div className="flex items-start gap-4">
+        <div className="flex flex-col">
+          <label htmlFor={selectionCount > 1 ? "multiWidth" : "width"} className="text-sm text-gray-600 mb-1">Width (px)</label>
+          <div className="flex flex-col">
+            <div className="flex items-center">
+              <input
+                ref={widthInputRef}
+                id={selectionCount > 1 ? "multiWidth" : "width"}
+                type="number"
+                min="1"
+                value={width || ''}
+                onChange={handleWidthChange}
+                onBlur={handleDimensionBlur}
+                onKeyDown={handleDimensionKeyDown}
+                className="input w-20"
+                disabled={disabled}
+              />
+            </div>
+            {width > 0 && (
+              <div className="text-xs text-gray-500 mt-1">
+                <span>{convertPixelsToPhysicalUnits(width).inches}" / {convertPixelsToPhysicalUnits(width).mm}mm</span>
+              </div>
+            )}
+          </div>
         </div>
+        
+        <div className="flex flex-col">
+          <label htmlFor={selectionCount > 1 ? "multiHeight" : "height"} className="text-sm text-gray-600 mb-1">Height (px)</label>
+          <div className="flex flex-col">
+            <div className="flex items-center">
+              <input
+                ref={heightInputRef}
+                id={selectionCount > 1 ? "multiHeight" : "height"}
+                type="number"
+                min="1"
+                value={height || ''}
+                onChange={handleHeightChange}
+                onBlur={handleDimensionBlur}
+                onKeyDown={handleDimensionKeyDown}
+                className="input w-20"
+                disabled={disabled}
+              />
+            </div>
+            {height > 0 && (
+              <div className="text-xs text-gray-500 mt-1">
+                <span>{convertPixelsToPhysicalUnits(height).inches}" / {convertPixelsToPhysicalUnits(height).mm}mm</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <button
+          onClick={toggleAspectRatio}
+          className={`mt-6 p-2 rounded-md flex items-center gap-2 ${
+            lockAspectRatio 
+              ? 'bg-primary/10 text-primary' 
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+          title={lockAspectRatio ? 'Aspect ratio locked' : 'Aspect ratio unlocked'}
+          disabled={disabled}
+        >
+          {lockAspectRatio ? <FiLock size={18} /> : <FiUnlock size={18} />}
+          <span className="text-xs">Lock aspect ratio</span>
+        </button>
       </div>
       
       <div>
         <button
           onClick={handleReset}
-          className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+          className="btn-secondary text-sm min-w-[80px] flex items-center justify-center"
           disabled={disabled || !originalDimensions}
         >
-          <FiRefreshCw size={14} />
-          Reset to Original
+          Reset
         </button>
       </div>
     </div>

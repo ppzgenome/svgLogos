@@ -133,6 +133,7 @@ export const getSvgDimensions = async (url: string): Promise<{ width: number; he
 interface LogoWithDimensions {
   url: string;
   id: string;
+  searchTerm?: string;
   dimensions?: {
     width: number;
     height: number;
@@ -143,7 +144,7 @@ export const downloadLogosAsZip = async (logos: LogoWithDimensions[]): Promise<v
   const zip = new JSZip()
 
   // Create downloads folder
-  const folder = zip.folder('logos')
+  const folder = zip.folder('svgLogos')
   if (!folder) throw new Error('Failed to create zip folder')
 
   // Download each SVG and add to zip
@@ -152,6 +153,17 @@ export const downloadLogosAsZip = async (logos: LogoWithDimensions[]): Promise<v
       try {
         const response = await fetch(logo.url)
         const svgText = await response.text()
+        
+        // Determine file name based on searchTerm if available
+        let fileName: string
+        if (logo.searchTerm) {
+          // Normalize the search term to create a valid filename
+          const normalizedName = logo.searchTerm.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+          fileName = `${normalizedName}.svg`
+        } else {
+          // Fallback to index-based naming if no search term is available
+          fileName = `logo-${index + 1}.svg`
+        }
         
         // If the logo has dimensions, ensure they are applied to the SVG
         if (logo.dimensions) {
@@ -170,18 +182,15 @@ export const downloadLogosAsZip = async (logos: LogoWithDimensions[]): Promise<v
             
             // Create a blob from the modified SVG text
             const blob = new Blob([modifiedSvgText], { type: 'image/svg+xml' })
-            const fileName = `logo-${index + 1}.svg`
             folder.file(fileName, blob)
           } else {
             // Fallback if SVG element not found
             const blob = new Blob([svgText], { type: 'image/svg+xml' })
-            const fileName = `logo-${index + 1}.svg`
             folder.file(fileName, blob)
           }
         } else {
           // No dimensions to apply, just use the original SVG
           const blob = new Blob([svgText], { type: 'image/svg+xml' })
-          const fileName = `logo-${index + 1}.svg`
           folder.file(fileName, blob)
         }
       } catch (error) {
@@ -196,7 +205,7 @@ export const downloadLogosAsZip = async (logos: LogoWithDimensions[]): Promise<v
   
   const link = document.createElement('a')
   link.href = downloadUrl
-  link.download = 'logos.zip'
+  link.download = 'svgLogos.zip'
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
