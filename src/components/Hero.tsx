@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import { LogoBanner } from './LogoBanner'
 
 const words = ['Consistent', 'Efficient', 'Sleek']
 
@@ -15,8 +16,8 @@ export const Hero = () => {
   }, [])
 
   return (
-    <section className="section-bg py-32">
-      <div className="section-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <section className="section-bg pt-32 pb-0 relative">
+      <div className="section-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -35,13 +36,14 @@ export const Hero = () => {
               </motion.span>
             </span>
             <br />
-            Logo Creation
+            Logo Curation
           </h1>
           <p className="mt-6 text-xl text-gray-600">
             for presentations, websites, marketing, and more.
           </p>
         </motion.div>
       </div>
+      <LogoBanner />
     </section>
   )
 }

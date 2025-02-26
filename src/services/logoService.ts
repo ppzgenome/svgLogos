@@ -64,6 +64,14 @@ const LOGO_SOURCES = {
       (term: string) => `https://www.brandlogos.net/logos/${term}-logo.svg`,
       (term: string) => `https://www.brandlogos.net/logos/${term}_logo.svg`
     ]
+  },
+  worldvectorlogo: {
+    name: 'World Vector Logo',
+    urls: [
+      (term: string) => `https://cdn.worldvectorlogo.com/logos/${term}.svg`,
+      (term: string) => `https://cdn.worldvectorlogo.com/logos/${term}-logo.svg`,
+      (term: string) => `https://cdn.worldvectorlogo.com/logos/${term}-icon.svg`
+    ]
   }
 }
 

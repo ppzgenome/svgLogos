@@ -3,10 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefreshCw } from 'react-icons/fi'
 import { searchMultipleLogos, searchLogoAlternative } from '../services/logoService'
 import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip } from '../services/fileService'
+import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, scaleSvgDimensions, resetSvgDimensions, GradientDefinition } from '../services/svgService'
+import { convertPixelsToPhysicalUnits } from '../utils/unitConversion'
+import { ColorPicker } from './ColorPicker'
+import { DimensionEditor } from './DimensionEditor'
+
+// Type for dimension display units
+type DimensionUnit = 'px' | 'in' | 'mm';
 
 interface Logo {
   id: string
   url: string
+  originalUrl?: string // Store the original URL before color changes
   source: string
   sourceProvider?: string
   searchTerm?: string
@@ -14,21 +22,33 @@ interface Logo {
     width: number
     height: number
   }
+  originalDimensions?: {
+    width: number
+    height: number
+  }
   needsDimensions?: boolean
   isRefreshing?: boolean
+  color?: string // Store the applied color
+  gradient?: GradientDefinition // Store the applied gradient
+  isChangingDimensions?: boolean
 }
 
 const MAX_LOGOS = 15
 
 export const WorkArea = () => {
   const [logos, setLogos] = useState<Logo[]>([])
-  const [selectedLogos, setSelectedLogos] = useState<Set<string>>(new Set())
+  const [selectedLogos, setSelectedLogos] = useState<Set<number>>(new Set())
   const [searchInput, setSearchInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [selectedColor, setSelectedColor] = useState('#000000')
+  const [isApplyingColor, setIsApplyingColor] = useState(false)
+  const [isChangingDimensions, setIsChangingDimensions] = useState(false)
+  const [displayUnit, setDisplayUnit] = useState<DimensionUnit>('px')
+  const [batchPresetUnit, setBatchPresetUnit] = useState<DimensionUnit>('px')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const errorTimerRef = useRef<number | null>(null)
@@ -62,7 +82,13 @@ export const WorkArea = () => {
     
     try {
       const dimensions = await getSvgDimensions(logo.url)
-      return { ...logo, dimensions, needsDimensions: false }
+      // Store both current and original dimensions
+      return { 
+        ...logo, 
+        dimensions, 
+        originalDimensions: logo.originalDimensions || dimensions, 
+        needsDimensions: false 
+      }
     } catch {
       return { ...logo, needsDimensions: false }
     }
@@ -148,19 +174,24 @@ export const WorkArea = () => {
     setWarning(null)
 
     try {
-      const { urls, errors } = await processUploadedFiles(files, MAX_LOGOS, logos.length)
+      const { processedFiles, errors } = await processUploadedFiles(files, MAX_LOGOS, logos.length)
       
       if (errors.length > 0) {
         setError(errors.join('. '))
       }
 
-      if (urls.length > 0) {
-        const newLogos: Logo[] = urls.map(url => ({
+      if (processedFiles.length > 0) {
+        const newLogos: Logo[] = processedFiles.map(file => ({
           id: `upload-${Math.random().toString(36).substr(2, 9)}`,
-          url,
+          url: file.url,
           source: 'upload',
           sourceProvider: 'User Upload',
-          needsDimensions: true
+          // If dimensions were extracted during upload, use them directly
+          dimensions: file.dimensions,
+          // If dimensions were found, we don't need to fetch them again
+          needsDimensions: !file.dimensions,
+          // If dimensions were found, store them as original dimensions too
+          originalDimensions: file.dimensions
         }))
         setLogos(prevLogos => [...prevLogos, ...newLogos])
       }
@@ -222,12 +253,22 @@ export const WorkArea = () => {
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, index: number) => {
     setLogos(logos.filter(logo => logo.id !== id))
     setSelectedLogos(prev => {
       const next = new Set(prev)
-      next.delete(id)
-      return next
+      next.delete(index)
+      
+      // Update indices for logos after the deleted one
+      const updated = new Set<number>()
+      prev.forEach(idx => {
+        if (idx < index) {
+          updated.add(idx)
+        } else if (idx > index) {
+          updated.add(idx - 1)
+        }
+      })
+      return updated
     })
     setError(null)
   }
@@ -244,16 +285,29 @@ export const WorkArea = () => {
     setWarning(null)
   }
 
-  const toggleLogoSelection = (id: string) => {
+  const toggleLogoSelection = (index: number) => {
     setSelectedLogos(prev => {
       const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
+      if (next.has(index)) {
+        next.delete(index)
       } else {
-        next.add(id)
+        next.add(index)
       }
       return next
     })
+  }
+
+  const handleSelectAll = () => {
+    // Create a set with indices of all logos
+    const allIndices = new Set<number>()
+    for (let i = 0; i < logos.length; i++) {
+      allIndices.add(i)
+    }
+    setSelectedLogos(allIndices)
+  }
+
+  const handleDeselectAll = () => {
+    setSelectedLogos(new Set())
   }
 
   const handleDownload = async () => {
@@ -261,6 +315,7 @@ export const WorkArea = () => {
     
     setIsDownloading(true)
     try {
+      // Pass the complete logo objects to ensure dimensions are preserved
       await downloadLogosAsZip(logos)
     } catch (err) {
       setError('Failed to download logos')
@@ -309,6 +364,238 @@ export const WorkArea = () => {
     }
   }
 
+  const applyColorToSelectedLogos = async (color: string) => {
+    if (selectedLogos.size === 0) return
+    
+    setIsApplyingColor(true)
+    setError(null)
+    
+    try {
+      const updatedLogos = await Promise.all(
+        logos.map(async (logo, index) => {
+          if (selectedLogos.has(index)) {
+            // Store original URL if not already stored
+            const originalUrl = logo.originalUrl || logo.url
+            
+            // Generate new colored SVG
+            const coloredUrl = await changeSvgColor(originalUrl, color)
+            
+            return {
+              ...logo,
+              url: coloredUrl,
+              originalUrl: originalUrl,
+              color: color,
+              gradient: undefined // Clear any gradient when applying solid color
+            }
+          }
+          return logo
+        })
+      )
+      
+      setLogos(updatedLogos)
+    } catch (err) {
+      setError('Failed to apply color to logos')
+    } finally {
+      setIsApplyingColor(false)
+    }
+  }
+  
+  const applyGradientToSelectedLogos = async (gradient: GradientDefinition) => {
+    if (selectedLogos.size === 0) return
+    
+    setIsApplyingColor(true)
+    setError(null)
+    
+    try {
+      const updatedLogos = await Promise.all(
+        logos.map(async (logo, index) => {
+          if (selectedLogos.has(index)) {
+            // Store original URL if not already stored
+            const originalUrl = logo.originalUrl || logo.url
+            
+            // Generate new gradient SVG
+            const gradientUrl = await changeSvgGradient(originalUrl, gradient)
+            
+            return {
+              ...logo,
+              url: gradientUrl,
+              originalUrl: originalUrl,
+              color: undefined, // Clear any solid color when applying gradient
+              gradient: gradient
+            }
+          }
+          return logo
+        })
+      )
+      
+      setLogos(updatedLogos)
+    } catch (err) {
+      setError('Failed to apply gradient to logos')
+    } finally {
+      setIsApplyingColor(false)
+    }
+  }
+
+  const resetSelectedLogosColor = async () => {
+    if (selectedLogos.size === 0) return
+    
+    setIsApplyingColor(true)
+    setError(null)
+    
+    try {
+      const updatedLogos = await Promise.all(
+        logos.map(async (logo, index) => {
+          if (selectedLogos.has(index) && logo.originalUrl) {
+            // Reset to original URL
+            const resetUrl = await resetSvgColor(logo.originalUrl)
+            
+            return {
+              ...logo,
+              url: resetUrl,
+              color: undefined
+            }
+          }
+          return logo
+        })
+      )
+      
+      setLogos(updatedLogos)
+    } catch (err) {
+      setError('Failed to reset logo colors')
+    } finally {
+      setIsApplyingColor(false)
+    }
+  }
+
+  const applyDimensionsToSelectedLogos = async (dimensions: { width: number; height: number }) => {
+    if (selectedLogos.size === 0) return
+    
+    setIsChangingDimensions(true)
+    setError(null)
+    
+    try {
+      const updatedLogos = await Promise.all(
+        logos.map(async (logo, index) => {
+          if (selectedLogos.has(index)) {
+            // Store original URL if not already stored
+            const originalUrl = logo.originalUrl || logo.url
+            
+            // Store original dimensions if not already stored
+            const originalDimensions = logo.originalDimensions || logo.dimensions
+            
+            // Generate new resized SVG
+            const resizedUrl = await changeSvgDimensions(originalUrl, dimensions.width, dimensions.height)
+            
+            return {
+              ...logo,
+              url: resizedUrl,
+              originalUrl: originalUrl,
+              dimensions: dimensions,
+              originalDimensions: originalDimensions
+            }
+          }
+          return logo
+        })
+      )
+      
+      setLogos(updatedLogos)
+    } catch (err) {
+      setError('Failed to apply dimensions to logos')
+    } finally {
+      setIsChangingDimensions(false)
+    }
+  }
+  
+  const scaleSelectedLogos = async (scalePercentage: number) => {
+    if (selectedLogos.size === 0) return
+    
+    setIsChangingDimensions(true)
+    setError(null)
+    
+    try {
+      const updatedLogos = await Promise.all(
+        logos.map(async (logo, index) => {
+          if (selectedLogos.has(index) && logo.originalDimensions) {
+            // Store original URL if not already stored
+            const originalUrl = logo.originalUrl || logo.url
+            
+            // Calculate new dimensions based on scale percentage
+            const newWidth = Math.round(logo.originalDimensions.width * (scalePercentage / 100))
+            const newHeight = Math.round(logo.originalDimensions.height * (scalePercentage / 100))
+            
+            // Generate new scaled SVG
+            const scaledUrl = await changeSvgDimensions(originalUrl, newWidth, newHeight)
+            
+            return {
+              ...logo,
+              url: scaledUrl,
+              originalUrl: originalUrl,
+              dimensions: { width: newWidth, height: newHeight }
+            }
+          }
+          return logo
+        })
+      )
+      
+      setLogos(updatedLogos)
+    } catch (err) {
+      setError('Failed to scale logos')
+    } finally {
+      setIsChangingDimensions(false)
+    }
+  }
+  
+  const resetSelectedLogosDimensions = async () => {
+    if (selectedLogos.size === 0) return
+    
+    setIsChangingDimensions(true)
+    setError(null)
+    
+    try {
+      const updatedLogos = await Promise.all(
+        logos.map(async (logo, index) => {
+          if (selectedLogos.has(index) && logo.originalUrl && logo.originalDimensions) {
+            // Reset to original URL and dimensions
+            const resetUrl = await resetSvgDimensions(logo.originalUrl)
+            
+            return {
+              ...logo,
+              url: resetUrl,
+              dimensions: { ...logo.originalDimensions }
+            }
+          }
+          return logo
+        })
+      )
+      
+      setLogos(updatedLogos)
+    } catch (err) {
+      setError('Failed to reset logo dimensions')
+    } finally {
+      setIsChangingDimensions(false)
+    }
+  }
+  
+  // Apply inch dimensions to selected logos
+  const applyInchDimensionsToSelectedLogos = async (widthInches: number, heightInches: number) => {
+    // Convert inches to pixels (1 inch = 96 pixels)
+    const widthPx = Math.round(widthInches * 96)
+    const heightPx = Math.round(heightInches * 96)
+    
+    // Apply the pixel dimensions
+    applyDimensionsToSelectedLogos({ width: widthPx, height: heightPx })
+  }
+  
+  // Apply millimeter dimensions to selected logos
+  const applyMmDimensionsToSelectedLogos = async (widthMm: number, heightMm: number) => {
+    // Convert mm to pixels (1 mm = 96/25.4 pixels)
+    const widthPx = Math.round(widthMm * (96 / 25.4))
+    const heightPx = Math.round(heightMm * (96 / 25.4))
+    
+    // Apply the pixel dimensions
+    applyDimensionsToSelectedLogos({ width: widthPx, height: heightPx })
+  }
+
   return (
     <section className="section-bg pt-20 pb-8">
       <div className="section-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -322,15 +609,22 @@ export const WorkArea = () => {
           
           <div className="flex flex-col gap-4 mb-8">
             <div className="flex gap-4">
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Enter company names (comma-separated, maximum 15 items)"
-                className="input flex-1"
-                disabled={isLoading}
-              />
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter company names (comma-separated, maximum 15 items)"
+                  className="input flex-1 pl-10 py-2 bg-gray-50 border-gray-300 focus:ring-2 focus:ring-primary focus:bg-white shadow-sm"
+                  disabled={isLoading}
+                />
+              </div>
               <button
                 onClick={handleSearch}
                 className="btn-primary whitespace-nowrap relative"
@@ -430,6 +724,31 @@ export const WorkArea = () => {
             </AnimatePresence>
           </div>
 
+          {/* Logo selection counter and controls */}
+          {logos.length > 0 && (
+            <div className="flex justify-end items-center w-full max-w-[75%] mx-auto mb-2 gap-2">
+              <span className="text-sm font-medium text-gray-600">
+                {selectedLogos.size}/{logos.length} selected
+              </span>
+              <button
+                onClick={handleSelectAll}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                disabled={selectedLogos.size === logos.length}
+                title="Select all logos"
+              >
+                Select All
+              </button>
+              <button
+                onClick={handleDeselectAll}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                disabled={selectedLogos.size === 0}
+                title="Deselect all logos"
+              >
+                Deselect All
+              </button>
+            </div>
+          )}
+
           <div 
             ref={dropZoneRef}
             onDragEnter={handleDragEnter}
@@ -450,12 +769,12 @@ export const WorkArea = () => {
             <div className="grid grid-cols-5 gap-4">
               {[...Array(MAX_LOGOS)].map((_, index) => {
                 const logo = logos[index]
-                const isSelected = logo ? selectedLogos.has(logo.id) : false
+                const isSelected = logo ? selectedLogos.has(index) : false
                 return (
                   <div
                     key={index}
                     className="aspect-square bg-gray-100 rounded-lg relative group"
-                    onClick={() => logo && toggleLogoSelection(logo.id)}
+                    onClick={() => logo && toggleLogoSelection(index)}
                   >
                     {logo && (
                       <AnimatePresence>
@@ -479,6 +798,14 @@ export const WorkArea = () => {
                           />
                           
                           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                            {!isSelected && (
+                              <button
+                                className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-50"
+                                title="Select logo"
+                              >
+                                <FiCheck className="w-4 h-4 text-gray-600" />
+                              </button>
+                            )}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -506,7 +833,7 @@ export const WorkArea = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                handleDelete(logo.id)
+                                handleDelete(logo.id, index)
                               }}
                               className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-50"
                             >
@@ -514,6 +841,7 @@ export const WorkArea = () => {
                             </button>
                           </div>
 
+                          {/* Selection indicator for selected logos */}
                           {isSelected && (
                             <div className="absolute top-2 left-2">
                               <div className="p-1 bg-primary rounded-full">
@@ -521,12 +849,56 @@ export const WorkArea = () => {
                               </div>
                             </div>
                           )}
+                          
+                          {/* Color indicator */}
+                          {logo.color && (
+                            <div 
+                              className="absolute bottom-2 right-2 w-4 h-4 rounded-full border border-white shadow-sm"
+                              style={{ backgroundColor: logo.color }}
+                              title={`Color: ${logo.color}`}
+                            />
+                          )}
 
                           <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-gray-500 bg-white/80 py-1">
                             {logo.dimensions ? (
-                              <span>
-                                {logo.dimensions.width} × {logo.dimensions.height} px
-                              </span>
+                              <div className="flex items-center justify-center">
+                                {/* Dimension display based on selected unit */}
+                                {displayUnit === 'px' && (
+                                  <span>{logo.dimensions.width} × {logo.dimensions.height} px</span>
+                                )}
+                                {displayUnit === 'in' && (
+                                  <span>
+                                    {convertPixelsToPhysicalUnits(logo.dimensions.width).inches}" × {convertPixelsToPhysicalUnits(logo.dimensions.height).inches}"
+                                  </span>
+                                )}
+                                {displayUnit === 'mm' && (
+                                  <span>
+                                    {convertPixelsToPhysicalUnits(logo.dimensions.width).mm} × {convertPixelsToPhysicalUnits(logo.dimensions.height).mm} mm
+                                  </span>
+                                )}
+                                
+                                {/* Unit toggle buttons */}
+                                <div className="inline-flex ml-2 border border-gray-200 rounded-md overflow-hidden">
+                                  <button 
+                                    className={`px-1 text-[10px] ${displayUnit === 'px' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-500'}`}
+                                    onClick={(e) => { e.stopPropagation(); setDisplayUnit('px'); }}
+                                  >
+                                    px
+                                  </button>
+                                  <button 
+                                    className={`px-1 text-[10px] ${displayUnit === 'in' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-500'}`}
+                                    onClick={(e) => { e.stopPropagation(); setDisplayUnit('in'); }}
+                                  >
+                                    in
+                                  </button>
+                                  <button 
+                                    className={`px-1 text-[10px] ${displayUnit === 'mm' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-500'}`}
+                                    onClick={(e) => { e.stopPropagation(); setDisplayUnit('mm'); }}
+                                  >
+                                    mm
+                                  </button>
+                                </div>
+                              </div>
                             ) : (
                               <FiLoader className="w-3 h-3 animate-spin inline" />
                             )}
@@ -538,6 +910,210 @@ export const WorkArea = () => {
                   </div>
                 )
               })}
+            </div>
+          </div>
+
+          {/* Editor Cards - Below grid */}
+          <div className="mt-6 w-full max-w-[75%] mx-auto flex flex-wrap gap-4">
+            {/* Color Editor Card */}
+            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex-1 max-w-md">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Colors
+              </h3>
+              
+              <p className="text-sm text-gray-500 mb-3">
+                Select one or more logos to apply colors
+              </p>
+              
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <ColorPicker
+                    initialColor={selectedColor}
+                    onChange={(color) => {
+                      setSelectedColor(color)
+                      if (selectedLogos.size > 0) {
+                        applyColorToSelectedLogos(color)
+                      }
+                    }}
+                    onGradientChange={(gradient) => {
+                      if (selectedLogos.size > 0) {
+                        applyGradientToSelectedLogos(gradient)
+                      }
+                    }}
+                    disabled={isApplyingColor}
+                  />
+                </div>
+                
+                <div className="flex items-end">
+                  <button
+                    onClick={resetSelectedLogosColor}
+                    className="btn-secondary text-sm"
+                    disabled={isApplyingColor || selectedLogos.size === 0}
+                  >
+                    {isApplyingColor ? (
+                      <FiLoader className="w-4 h-4 animate-spin mr-2 inline" />
+                    ) : null}
+                    Reset Colors
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Dimension Editor Card */}
+            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex-1 max-w-md">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">
+                Dimensions
+              </h3>
+              
+              {selectedLogos.size === 1 ? (
+                (() => {
+                  // Get the selected logo
+                  const selectedLogoIndex = Array.from(selectedLogos)[0];
+                  const selectedLogo = logos[selectedLogoIndex];
+                  
+                  return (
+                    <DimensionEditor
+                      initialDimensions={selectedLogo.dimensions}
+                      originalDimensions={selectedLogo.originalDimensions}
+                      onChange={(dimensions) => {
+                        applyDimensionsToSelectedLogos(dimensions);
+                      }}
+                      onScaleChange={(scalePercentage) => {
+                        scaleSelectedLogos(scalePercentage);
+                      }}
+                      onReset={() => {
+                        resetSelectedLogosDimensions();
+                      }}
+                      disabled={isChangingDimensions}
+                    />
+                  );
+                })()
+              ) : selectedLogos.size > 1 ? (
+                <div>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Multiple logos selected. Choose an action:
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">Scale all selected logos:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {[50, 75, 100, 150, 200].map(scale => (
+                          <button
+                            key={scale}
+                            onClick={() => scaleSelectedLogos(scale)}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            disabled={isChangingDimensions}
+                          >
+                            {scale}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center mb-2">
+                        <p className="text-sm text-gray-600">Apply preset dimensions to all:</p>
+                        
+                        {/* Unit selector for batch operations */}
+                        <div className="flex border border-gray-200 rounded-md ml-2 overflow-hidden">
+                          <button 
+                            className={`px-2 py-0.5 text-[10px] ${batchPresetUnit === 'px' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-600'}`}
+                            onClick={() => setBatchPresetUnit('px')}
+                            disabled={isChangingDimensions}
+                          >
+                            px
+                          </button>
+                          <button 
+                            className={`px-2 py-0.5 text-[10px] ${batchPresetUnit === 'in' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-600'}`}
+                            onClick={() => setBatchPresetUnit('in')}
+                            disabled={isChangingDimensions}
+                          >
+                            in
+                          </button>
+                          <button 
+                            className={`px-2 py-0.5 text-[10px] ${batchPresetUnit === 'mm' ? 'bg-primary text-white' : 'bg-gray-50 text-gray-600'}`}
+                            onClick={() => setBatchPresetUnit('mm')}
+                            disabled={isChangingDimensions}
+                          >
+                            mm
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {/* Pixel presets */}
+                        {batchPresetUnit === 'px' && [
+                          { label: '16×16', width: 16, height: 16 },
+                          { label: '32×32', width: 32, height: 32 },
+                          { label: '64×64', width: 64, height: 64 },
+                          { label: '128×128', width: 128, height: 128 }
+                        ].map(preset => (
+                          <button
+                            key={preset.label}
+                            onClick={() => applyDimensionsToSelectedLogos({ width: preset.width, height: preset.height })}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            disabled={isChangingDimensions}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                        
+                        {/* Inch presets */}
+                        {batchPresetUnit === 'in' && [
+                          { label: '0.25×0.25"', width: 0.25, height: 0.25 },
+                          { label: '0.5×0.5"', width: 0.5, height: 0.5 },
+                          { label: '1×1"', width: 1, height: 1 },
+                          { label: '2×2"', width: 2, height: 2 }
+                        ].map(preset => (
+                          <button
+                            key={preset.label}
+                            onClick={() => applyInchDimensionsToSelectedLogos(preset.width, preset.height)}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            disabled={isChangingDimensions}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                        
+                        {/* Millimeter presets */}
+                        {batchPresetUnit === 'mm' && [
+                          { label: '5×5mm', width: 5, height: 5 },
+                          { label: '10×10mm', width: 10, height: 10 },
+                          { label: '20×20mm', width: 20, height: 20 },
+                          { label: '50×50mm', width: 50, height: 50 }
+                        ].map(preset => (
+                          <button
+                            key={preset.label}
+                            onClick={() => applyMmDimensionsToSelectedLogos(preset.width, preset.height)}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            disabled={isChangingDimensions}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={resetSelectedLogosDimensions}
+                      className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded mt-4"
+                      disabled={isChangingDimensions}
+                    >
+                      {isChangingDimensions ? (
+                        <FiLoader className="w-4 h-4 animate-spin mr-1" />
+                      ) : (
+                        <FiRefreshCw size={14} className="mr-1" />
+                      )}
+                      Reset to Original Dimensions
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Select one or more logos to modify dimensions
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
