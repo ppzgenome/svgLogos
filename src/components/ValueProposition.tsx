@@ -38,6 +38,14 @@ export const ValueProposition = () => {
   return (
     <section className="section-bg py-20">
       <div className="section-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-3xl md:text-4xl font-bold text-center mb-12"
+        >
+          Simple | Elegant | Fast
+        </motion.h2>
+        
         <motion.div
           variants={container}
           initial="hidden"
