@@ -11,6 +11,8 @@ export interface GradientDefinition {
   endColor: string;
   direction: string;
   name: string;
+  startPosition?: number; // Position of start color (0-100)
+  endPosition?: number; // Position of end color (0-100)
 }
 
 /**
@@ -111,13 +113,13 @@ export const changeSvgGradient = async (svgUrl: string, gradient: GradientDefini
       linearGradient.setAttribute('y2', '0%');
   }
   
-  // Add gradient stops
+  // Add gradient stops with positions
   const stop1 = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'stop');
-  stop1.setAttribute('offset', '0%');
+  stop1.setAttribute('offset', `${gradient.startPosition || 0}%`);
   stop1.setAttribute('stop-color', gradient.startColor);
   
   const stop2 = svgDoc.createElementNS('http://www.w3.org/2000/svg', 'stop');
-  stop2.setAttribute('offset', '100%');
+  stop2.setAttribute('offset', `${gradient.endPosition || 100}%`);
   stop2.setAttribute('stop-color', gradient.endColor);
   
   linearGradient.appendChild(stop1);

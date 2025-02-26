@@ -54,8 +54,6 @@ export const WorkArea = () => {
   const [_batchPresetUnit, _setBatchPresetUnit] = useState<DimensionUnit>('px')
   const [multiWidth, setMultiWidth] = useState(0)
   const [multiHeight, setMultiHeight] = useState(0)
-  const [multiLockAspectRatio, setMultiLockAspectRatio] = useState(true)
-  const [multiAspectRatio, setMultiAspectRatio] = useState(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const errorTimerRef = useRef<number | null>(null)
@@ -77,61 +75,10 @@ export const WorkArea = () => {
         setMultiWidth(avgWidth);
         setMultiHeight(avgHeight);
         
-        // Calculate average aspect ratio
-        if (avgHeight > 0) {
-          setMultiAspectRatio(avgWidth / avgHeight);
-        }
       }
     }
   }, [selectedLogos, logos]);
   
-  // Handle width change for multiple logos
-  const _handleMultiWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newWidth = parseInt(e.target.value, 10) || 0;
-    setMultiWidth(newWidth);
-    
-    if (multiLockAspectRatio && newWidth > 0) {
-      const newHeight = Math.round(newWidth / multiAspectRatio);
-      setMultiHeight(newHeight);
-      // Don't apply dimensions immediately to prevent focus loss
-    } else {
-      // Don't apply dimensions immediately to prevent focus loss
-    }
-  };
-  
-  // Handle height change for multiple logos
-  const _handleMultiHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newHeight = parseInt(e.target.value, 10) || 0;
-    setMultiHeight(newHeight);
-    
-    if (multiLockAspectRatio && newHeight > 0) {
-      const newWidth = Math.round(newHeight * multiAspectRatio);
-      setMultiWidth(newWidth);
-      // Don't apply dimensions immediately to prevent focus loss
-    } else {
-      // Don't apply dimensions immediately to prevent focus loss
-    }
-  };
-  
-  // Handle dimension input blur for multiple logos
-  const _handleMultiDimensionBlur = () => {
-    // Apply dimensions when input loses focus
-    applyDimensionsToSelectedLogos({ width: multiWidth, height: multiHeight });
-  };
-  
-  // Handle dimension input key down for multiple logos
-  const _handleMultiDimensionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Apply dimensions when Enter key is pressed
-    if (e.key === 'Enter') {
-      applyDimensionsToSelectedLogos({ width: multiWidth, height: multiHeight });
-    }
-  };
-  
-  // Toggle aspect ratio lock for multiple logos
-  const _toggleMultiAspectRatio = () => {
-    setMultiLockAspectRatio(!multiLockAspectRatio);
-  };
-
   // Auto-dismiss error message after 2 seconds for certain errors
   useEffect(() => {
     // Clear any existing timer
@@ -741,25 +688,6 @@ export const WorkArea = () => {
     }
   }
   
-  // Apply inch dimensions to selected logos
-  const _applyInchDimensionsToSelectedLogos = async (widthInches: number, heightInches: number) => {
-    // Convert inches to pixels (1 inch = 96 pixels)
-    const widthPx = Math.round(widthInches * 96)
-    const heightPx = Math.round(heightInches * 96)
-    
-    // Apply the pixel dimensions
-    applyDimensionsToSelectedLogos({ width: widthPx, height: heightPx })
-  }
-  
-  // Apply millimeter dimensions to selected logos
-  const _applyMmDimensionsToSelectedLogos = async (widthMm: number, heightMm: number) => {
-    // Convert mm to pixels (1 mm = 96/25.4 pixels)
-    const widthPx = Math.round(widthMm * (96 / 25.4))
-    const heightPx = Math.round(heightMm * (96 / 25.4))
-    
-    // Apply the pixel dimensions
-    applyDimensionsToSelectedLogos({ width: widthPx, height: heightPx })
-  }
 
   return (
     <section className="section-bg pt-20 pb-8">
