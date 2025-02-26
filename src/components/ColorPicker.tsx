@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { GradientDefinition } from '../services/svgService'
+import { GradientDefinition } from '../types/gradients'
 
 interface ColorPickerProps {
   initialColor?: string

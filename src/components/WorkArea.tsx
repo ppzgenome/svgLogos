@@ -4,7 +4,8 @@ import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefres
 // Unused icons would be imported here if needed
 import { searchMultipleLogos, searchLogoAlternative } from '../services/logoService'
 import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip } from '../services/fileService'
-import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, resetSvgDimensions, GradientDefinition } from '../services/svgService'
+import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, resetSvgDimensions } from '../services/svgService'
+import { GradientDefinition } from '../types/gradients'
 import { convertPixelsToPhysicalUnits } from '../utils/unitConversion'
 import { ColorPicker } from './ColorPicker'
 import { DimensionEditor } from './DimensionEditor'
