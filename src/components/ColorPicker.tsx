@@ -48,10 +48,22 @@ export const ColorPicker = ({
   // Effect to apply changes when shouldApplyChanges is true
   useEffect(() => {
     if (shouldApplyChanges) {
-      applyCustomGradient();
+      // Create a gradient with the current colors and positions
+      const customGradient: GradientDefinition = {
+        id: `custom-gradient`, // Use a stable ID instead of Date.now()
+        startColor: customGradientStartColor,
+        endColor: customGradientEndColor,
+        direction: customGradientDirection,
+        name: 'Custom Gradient',
+        startPosition: startStopPosition,
+        endPosition: endStopPosition
+      }
+      setSelectedGradient(customGradient.id)
+      onGradientChange && onGradientChange(customGradient)
       setShouldApplyChanges(false);
     }
-  }, [shouldApplyChanges]);
+  }, [shouldApplyChanges, customGradientStartColor, customGradientEndColor, 
+      customGradientDirection, startStopPosition, endStopPosition, onGradientChange]);
   
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newColor = e.target.value
@@ -156,44 +168,23 @@ export const ColorPicker = ({
     }
   }, [isDragging, activeStop, startStopPosition, endStopPosition])
   
+  // Debounce timer for gradient changes
+  const gradientChangeTimerRef = useRef<number | null>(null);
+  
   const applyCustomGradient = () => {
     if (onGradientChange) {
-      // Instead of applying immediately, set the flag to apply changes
-      setShouldApplyChanges(true);
-    }
-  }
-  
-  // The existing useEffect will handle the actual application
-  useEffect(() => {
-    if (shouldApplyChanges) {
-      // Create a gradient with the current colors and positions
-      const customGradient: GradientDefinition = {
-        id: `custom-${Date.now()}`,
-        startColor: customGradientStartColor,
-        endColor: customGradientEndColor,
-        direction: customGradientDirection,
-        name: 'Custom Gradient',
-        startPosition: startStopPosition, // Include start position
-        endPosition: endStopPosition // Include end position
+      // Clear any existing timer
+      if (gradientChangeTimerRef.current) {
+        window.clearTimeout(gradientChangeTimerRef.current);
+        gradientChangeTimerRef.current = null;
       }
-      setSelectedGradient(customGradient.id)
-      onGradientChange && onGradientChange(customGradient)
-      setShouldApplyChanges(false);
+      
+      // Set a new timer to debounce the gradient change
+      gradientChangeTimerRef.current = window.setTimeout(() => {
+        setShouldApplyChanges(true);
+        gradientChangeTimerRef.current = null;
+      }, 50); // 50ms debounce delay
     }
-  }, [shouldApplyChanges, customGradientStartColor, customGradientEndColor, customGradientDirection, startStopPosition, endStopPosition, onGradientChange]);
-  
-  // Open color picker for a specific stop
-  const openStopColorPicker = (stop: 'start' | 'end') => {
-    // Check canEditGradient instead of disabled
-    if (!canEditGradient) return
-    
-    // Set the temporary color to the current color of the stop
-    setTempColor(stop === 'start' ? customGradientStartColor : customGradientEndColor)
-    
-    // Use setTimeout to ensure this runs after any other click handlers
-    setTimeout(() => {
-      setOpenColorPicker(stop)
-    }, 0)
   }
   
   // Handle temporary color change in the popup
@@ -483,7 +474,6 @@ export const ColorPicker = ({
                         ${activeStop === 'start' ? 'ring-2 ring-primary ring-opacity-70' : ''}
                         hover:scale-110 hover:shadow-lg`}
                       style={{ background: customGradientStartColor }}
-                      // Remove click handler for opening color picker
                       title="Click to change color"
                     >
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -537,7 +527,6 @@ export const ColorPicker = ({
                         ${activeStop === 'end' ? 'ring-2 ring-primary ring-opacity-70' : ''}
                         hover:scale-110 hover:shadow-lg`}
                       style={{ background: customGradientEndColor }}
-                      // Remove click handler for opening color picker
                       title="Click to change color"
                     >
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
