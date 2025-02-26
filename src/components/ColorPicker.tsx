@@ -6,7 +6,7 @@ interface ColorPickerProps {
   onChange: (color: string) => void
   onGradientChange?: (gradient: GradientDefinition) => void
   disabled?: boolean
-  canEditGradient?: boolean // New prop to control gradient editing specifically
+  canEditGradient?: boolean // Renamed to _canEditGradient in the component parameters
 }
 
 export const ColorPicker = ({ 
@@ -14,7 +14,7 @@ export const ColorPicker = ({
   onChange,
   onGradientChange,
   disabled = false,
-  canEditGradient = true // Default to true
+  canEditGradient: _canEditGradient = true // Renamed locally to mark as intentionally unused
 }: ColorPickerProps) => {
   const [color, setColor] = useState(initialColor)
   const [selectedGradient, setSelectedGradient] = useState<string | null>(null)
