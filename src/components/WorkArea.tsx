@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefreshCw } from 'react-icons/fi'
 // Unused icons would be imported here if needed
 import { searchMultipleLogos, searchLogoAlternative } from '../services/logoService'
-import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip } from '../services/fileService'
+import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip, downloadLogosAsPng } from '../services/fileService'
 import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, resetSvgDimensions } from '../services/svgService'
 import { GradientDefinition } from '../types/gradients'
 import { convertPixelsToPhysicalUnits } from '../utils/unitConversion'
@@ -43,6 +43,7 @@ export const WorkArea = () => {
   const [searchInput, setSearchInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isDownloadingPng, setIsDownloadingPng] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -347,6 +348,20 @@ export const WorkArea = () => {
       setError('Failed to download logos')
     } finally {
       setIsDownloading(false)
+    }
+  }
+
+  const handleDownloadPng = async () => {
+    if (logos.length === 0) return
+    
+    setIsDownloadingPng(true)
+    try {
+      // Pass the complete logo objects to ensure dimensions are preserved
+      await downloadLogosAsPng(logos)
+    } catch (err) {
+      setError('Failed to download logos as PNG')
+    } finally {
+      setIsDownloadingPng(false)
     }
   }
 
@@ -756,26 +771,6 @@ export const WorkArea = () => {
                   <FiUpload className="w-4 h-4" />
                   Upload SVG Files
                 </button>
-                <button
-                  onClick={handleDownload}
-                  className="btn-secondary flex items-center gap-2"
-                  disabled={isLoading || isDownloading || logos.length === 0}
-                >
-                  {isDownloading ? (
-                    <FiLoader className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FiDownload className="w-4 h-4" />
-                  )}
-                  Download All
-                </button>
-                <button
-                  onClick={handleClearAll}
-                  className="btn-secondary flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  disabled={isLoading || logos.length === 0}
-                >
-                  <FiTrash2 className="w-4 h-4" />
-                  Clear All
-                </button>
               </div>
               <motion.p
                 initial={{ opacity: 0 }}
@@ -816,31 +811,6 @@ export const WorkArea = () => {
               )}
             </AnimatePresence>
           </div>
-
-          {/* Logo selection counter and controls */}
-          {logos.length > 0 && (
-            <div className="flex justify-end items-center w-full max-w-[75%] mx-auto mb-2 gap-2">
-              <span className="text-sm font-medium text-gray-600">
-                {selectedLogos.size}/{logos.length} selected
-              </span>
-              <button
-                onClick={handleSelectAll}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
-                disabled={selectedLogos.size === logos.length}
-                title="Select all logos"
-              >
-                Select All
-              </button>
-              <button
-                onClick={handleDeselectAll}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
-                disabled={selectedLogos.size === 0}
-                title="Deselect all logos"
-              >
-                Deselect All
-              </button>
-            </div>
-          )}
 
           <div 
             ref={dropZoneRef}
@@ -1003,17 +973,85 @@ export const WorkArea = () => {
             </div>
           </div>
 
+          {/* Logo selection counter and controls */}
+          <div className="flex justify-between items-center w-full max-w-[75%] mx-auto mt-4 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-600 mr-2">
+                {selectedLogos.size}/{logos.length} selected
+              </span>
+              <button
+                onClick={handleSelectAll}
+                className="btn-secondary flex items-center gap-2"
+                disabled={selectedLogos.size === logos.length || logos.length === 0}
+                title="Select all logos"
+              >
+                <FiCheck className="w-4 h-4" />
+                Select All
+              </button>
+              <button
+                onClick={handleDeselectAll}
+                className="btn-secondary flex items-center gap-2"
+                disabled={selectedLogos.size === 0}
+                title="Deselect all logos"
+              >
+                <FiX className="w-4 h-4" />
+                Deselect All
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDownloadPng}
+                className="btn-secondary flex items-center gap-2"
+                disabled={isLoading || isDownloadingPng || logos.length === 0}
+              >
+                {isDownloadingPng ? (
+                  <FiLoader className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FiDownload className="w-4 h-4" />
+                )}
+                Download (PNG)
+              </button>
+              <button
+                onClick={handleDownload}
+                className="btn-secondary flex items-center gap-2"
+                disabled={isLoading || isDownloading || logos.length === 0}
+              >
+                {isDownloading ? (
+                  <FiLoader className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FiDownload className="w-4 h-4" />
+                )}
+                Download (SVG)
+              </button>
+              <button
+                onClick={handleClearAll}
+                className="btn-secondary flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                disabled={isLoading || logos.length === 0}
+              >
+                <FiTrash2 className="w-4 h-4" />
+                Clear All
+              </button>
+            </div>
+          </div>
+
           {/* Editor Cards - Below grid */}
           <div className="mt-6 w-full max-w-[75%] mx-auto flex flex-wrap gap-4">
             {/* Color Editor Card */}
             <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex-1 max-w-md">
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Colors
+                Custom Aesthetics
               </h3>
               
               <p className="text-sm text-gray-500 mb-3">
                 Select one or more logos to transform:
               </p>
+              
+              {/* Colors Title */}
+              <div className="flex items-center mb-3">
+                <div className="w-full">
+                  <span className="text-sm font-medium">Colors</span>
+                </div>
+              </div>
               
               <div className="flex flex-wrap gap-6">
                 <div>
