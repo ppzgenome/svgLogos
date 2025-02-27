@@ -229,8 +229,13 @@ export const DimensionEditor = ({
       </p>
       
       <div>
-        <p className="text-sm text-gray-600 mb-2">Scale</p>
-        <div className="flex flex-wrap gap-2">
+        {/* Scale Title */}
+        <div className="flex items-center">
+          <div className="w-full">
+            <span className="text-sm font-medium">Scale</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
           {scaleOptions.map(option => (
             <button
               key={option.label}
@@ -245,7 +250,12 @@ export const DimensionEditor = ({
       </div>
       
       <div>
-        <p className="text-sm text-gray-600 mb-2">Preset Dimensions</p>
+        {/* Preset Dimensions Title */}
+        <div className="flex items-center">
+          <div className="w-full">
+            <span className="text-sm font-medium">Preset Dimensions</span>
+          </div>
+        </div>
         
         {/* Unit tabs */}
         <div className="inline-flex border border-gray-200 rounded-md mb-3 overflow-hidden">
@@ -311,8 +321,13 @@ export const DimensionEditor = ({
       
       <div className="flex items-start gap-4">
         <div className="flex flex-col">
-          <label htmlFor={selectionCount > 1 ? "multiWidth" : "width"} className="text-sm text-gray-600 mb-1">Width (px)</label>
-          <div className="flex flex-col">
+          {/* Width Title */}
+          <div className="flex items-center">
+            <div className="w-full">
+              <span className="text-sm font-medium">Width (px)</span>
+            </div>
+          </div>
+          <div className="flex flex-col mt-1">
             <div className="flex items-center">
               <input
                 ref={widthInputRef}
@@ -336,8 +351,13 @@ export const DimensionEditor = ({
         </div>
         
         <div className="flex flex-col">
-          <label htmlFor={selectionCount > 1 ? "multiHeight" : "height"} className="text-sm text-gray-600 mb-1">Height (px)</label>
-          <div className="flex flex-col">
+          {/* Height Title */}
+          <div className="flex items-center">
+            <div className="w-full">
+              <span className="text-sm font-medium">Height (px)</span>
+            </div>
+          </div>
+          <div className="flex flex-col mt-1">
             <div className="flex items-center">
               <input
                 ref={heightInputRef}

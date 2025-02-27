@@ -380,20 +380,6 @@ export const ColorPicker = ({
           </div>
         </div>
         
-        {/* Gradient colors row */}
-        {onGradientChange && (
-          <div className="flex items-center">
-            <div className="w-20 flex justify-end">
-              <span className="text-xs text-gray-500 mr-3">Gradients</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {gradients.map((gradient) => (
-                <GradientButton key={gradient.id} gradient={gradient} />
-              ))}
-            </div>
-          </div>
-        )}
-        
         {/* Custom color picker - moved below preset colors */}
         <div className="flex items-center mt-4">
           <div className="w-20 flex justify-end">
@@ -426,33 +412,38 @@ export const ColorPicker = ({
           </div>
         </div>
         
+        {/* Gradients Title */}
+        <div className="flex items-center mt-4">
+          <div className="w-full">
+            <span className="text-sm font-medium">Gradients</span>
+          </div>
+        </div>
+        
+        {/* Gradient colors row */}
+        {onGradientChange && (
+          <div className="flex items-center">
+            <div className="w-20 flex justify-end">
+              <span className="text-xs text-gray-500 mr-3">Presets</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {gradients.map((gradient) => (
+                <GradientButton key={gradient.id} gradient={gradient} />
+              ))}
+            </div>
+          </div>
+        )}
+        
         {/* Custom Gradient Section */}
         {onGradientChange && (
-          <div className="flex items-center mt-4">
-            <div className="w-20 flex justify-end">
-              <span className="text-xs text-gray-500 mr-3">Custom Gradient</span>
+          <div className="flex items-start">
+            <div className="w-20 flex justify-end pt-1">
+              <span className="text-xs text-gray-500 mr-3">Custom</span>
             </div>
-            <div className="flex flex-col gap-2 w-full">
-              {/* Direction Selector */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-500 mr-2">Direction:</span>
-                <select 
-                  value={customGradientDirection} 
-                  onChange={handleDirectionChange}
-                  className="input text-sm py-1"
-                  disabled={disabled}
-                >
-                  <option value="to right">Horizontal →</option>
-                  <option value="to bottom">Vertical ↓</option>
-                  <option value="to bottom right">Diagonal ↘</option>
-                  <option value="to top right">Diagonal ↗</option>
-                </select>
-              </div>
-              
+            <div className="flex flex-col gap-2" style={{ width: 'calc(100% - 5rem)' }}>
               {/* Gradient Bar with Draggable Color Stops */}
               <div 
                 ref={gradientBarRef}
-                className={`relative h-8 rounded border border-gray-300 ${
+                className={`relative h-6 rounded border border-gray-300 ${
                   disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                 } ${selectedGradient?.startsWith('custom-') ? 'ring-2 ring-primary' : ''}`}
                 style={{ 
@@ -470,7 +461,7 @@ export const ColorPicker = ({
                 >
                   <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2">
                     <div 
-                      className={`w-7 h-7 rounded-full border-2 border-white shadow-md transition-all duration-200 
+                      className={`w-5 h-5 rounded-full border-2 border-white shadow-md transition-all duration-200 
                         ${activeStop === 'start' ? 'ring-2 ring-primary ring-opacity-70' : ''}
                         hover:scale-110 hover:shadow-lg`}
                       style={{ background: customGradientStartColor }}
@@ -523,7 +514,7 @@ export const ColorPicker = ({
                 >
                   <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2">
                     <div 
-                      className={`w-7 h-7 rounded-full border-2 border-white shadow-md transition-all duration-200 
+                      className={`w-5 h-5 rounded-full border-2 border-white shadow-md transition-all duration-200 
                         ${activeStop === 'end' ? 'ring-2 ring-primary ring-opacity-70' : ''}
                         hover:scale-110 hover:shadow-lg`}
                       style={{ background: customGradientEndColor }}
@@ -629,6 +620,22 @@ export const ColorPicker = ({
                     disabled={disabled}
                   />
                 </div>
+              </div>
+              
+              {/* Direction Selector */}
+              <div className="flex items-center gap-2 mt-2 mb-2">
+                <span className="text-xs text-gray-500 mr-2">Direction:</span>
+                <select 
+                  value={customGradientDirection} 
+                  onChange={handleDirectionChange}
+                  className="input text-sm py-1"
+                  disabled={disabled}
+                >
+                  <option value="to right">Horizontal →</option>
+                  <option value="to bottom">Vertical ↓</option>
+                  <option value="to bottom right">Diagonal ↘</option>
+                  <option value="to top right">Diagonal ↗</option>
+                </select>
               </div>
             </div>
           </div>
