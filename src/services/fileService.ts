@@ -211,3 +211,84 @@ export const downloadLogosAsZip = async (logos: LogoWithDimensions[]): Promise<v
   document.body.removeChild(link)
   URL.revokeObjectURL(downloadUrl)
 }
+
+export const downloadLogosAsPng = async (logos: LogoWithDimensions[]): Promise<void> => {
+  const zip = new JSZip()
+
+  // Create downloads folder
+  const folder = zip.folder('pngLogos')
+  if (!folder) throw new Error('Failed to create zip folder')
+
+  // Convert each SVG to PNG and add to zip
+  await Promise.all(
+    logos.map(async (logo, index) => {
+      try {
+        // Determine file name based on searchTerm if available
+        let fileName: string
+        if (logo.searchTerm) {
+          // Normalize the search term to create a valid filename
+          const normalizedName = logo.searchTerm.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+          fileName = `${normalizedName}.png`
+        } else {
+          // Fallback to index-based naming if no search term is available
+          fileName = `logo-${index + 1}.png`
+        }
+
+        // Create an image element to load the SVG
+        const img = new Image()
+        
+        // Create a canvas to render the image
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Failed to get canvas context')
+        
+        // Set dimensions based on logo dimensions or default to 300x300
+        const width = logo.dimensions?.width || 300
+        const height = logo.dimensions?.height || 300
+        
+        canvas.width = width
+        canvas.height = height
+        
+        // Wait for the image to load
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // Draw the image on the canvas
+            ctx.clearRect(0, 0, width, height)
+            ctx.drawImage(img, 0, 0, width, height)
+            
+            // Convert canvas to PNG blob
+            canvas.toBlob((blob) => {
+              if (blob) {
+                folder.file(fileName, blob)
+                resolve()
+              } else {
+                reject(new Error('Failed to convert canvas to blob'))
+              }
+            }, 'image/png')
+          }
+          
+          img.onerror = () => {
+            reject(new Error(`Failed to load image for ${logo.id}`))
+          }
+          
+          // Set the source to the SVG URL
+          img.src = logo.url
+        })
+      } catch (error) {
+        console.error(`Failed to convert logo ${logo.id} to PNG:`, error)
+      }
+    })
+  )
+
+  // Generate and download zip file
+  const content = await zip.generateAsync({ type: 'blob' })
+  const downloadUrl = URL.createObjectURL(content)
+  
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = 'pngLogos.zip'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(downloadUrl)
+}
