@@ -16,7 +16,7 @@ const brandLogos = [
   'americanexpress', 'volkswagen', 'ebay'
 ]
 
-export const LogoBanner = () => {
+export const ReversedLogoBanner = () => {
   const [logos, setLogos] = useState<Array<{ id: string; url: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -48,7 +48,7 @@ export const LogoBanner = () => {
 
   return (
     <div className="logo-banner bg-white py-4 overflow-hidden">
-      <div className="logo-scroll">
+      <div className="logo-scroll-reverse">
         {/* First set of logos */}
         <div className="logo-container">
           {logos.map((logo, index) => (
