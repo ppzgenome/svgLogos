@@ -229,7 +229,6 @@ export const scaleSvgDimensions = async (svgUrl: string, scalePercentage: number
   // Get current dimensions
   let width = svgElement.getAttribute('width');
   let height = svgElement.getAttribute('height');
-  let viewBox = svgElement.getAttribute('viewBox');
   
   // Calculate scale factor
   const scaleFactor = scalePercentage / 100;
@@ -242,12 +241,8 @@ export const scaleSvgDimensions = async (svgUrl: string, scalePercentage: number
     svgElement.setAttribute('height', newHeight.toString());
   }
   
-  // Update viewBox if it exists
-  if (viewBox) {
-    const [minX, minY, vbWidth, vbHeight] = viewBox.split(' ').map(parseFloat);
-    const newViewBox = `${minX} ${minY} ${vbWidth} ${vbHeight}`;
-    svgElement.setAttribute('viewBox', newViewBox);
-  }
+  // Keep the original viewBox if it exists
+  // No need to modify the viewBox when scaling
   
   // Convert back to string and create a new object URL
   const serializer = new XMLSerializer();
@@ -337,10 +332,6 @@ export const addSvgBorder = async (
   // Calculate actual padding based on logo dimensions
   const paddingWidth = Math.max(width * paddingPercentage, minPadding);
   const paddingHeight = Math.max(height * paddingPercentage, minPadding);
-  
-  // Add the border thickness to ensure proper spacing
-  const totalPaddingWidth = paddingWidth + thickness;
-  const totalPaddingHeight = paddingHeight + thickness;
   
   // Set border properties to create a proper border (outline) around the SVG content
   // Position the border with calculated padding to ensure it grows outward, not inward
@@ -461,7 +452,6 @@ export const removeSvgBorder = async (svgUrl: string): Promise<string> => {
   const borderRect = svgDoc.querySelector('rect[data-border="true"]');
   if (borderRect && borderRect.parentNode) {
     // Get the border properties
-    const thickness = parseFloat(borderRect.getAttribute('stroke-width') || '0');
     const x = parseFloat(borderRect.getAttribute('x') || '0');
     const y = parseFloat(borderRect.getAttribute('y') || '0');
     const width = parseFloat(borderRect.getAttribute('width') || '0');
@@ -470,9 +460,6 @@ export const removeSvgBorder = async (svgUrl: string): Promise<string> => {
     // Get the current viewBox
     const viewBox = svgElement.getAttribute('viewBox');
     if (viewBox) {
-      // Parse the viewBox values
-      const viewBoxValues = viewBox.split(/\s+/).map(parseFloat);
-      
       // Calculate the original content dimensions
       const contentWidth = width - (Math.abs(x) * 2);
       const contentHeight = height - (Math.abs(y) * 2);

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { FiLock, FiUnlock, FiRefreshCw as _FiRefreshCw, FiLoader as _FiLoader } from 'react-icons/fi'
 import { 
-  convertPixelsToPhysicalUnits, 
   convertPixelsToUnit, 
   convertToPixels 
 } from '../utils/unitConversion'

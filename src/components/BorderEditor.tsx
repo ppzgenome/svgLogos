@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FiRefreshCw, FiChevronDown, FiChevronRight } from 'react-icons/fi'
+import { FiChevronDown, FiChevronRight } from 'react-icons/fi'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface BorderEditorProps {
@@ -8,7 +8,6 @@ interface BorderEditorProps {
   onChange: (borderProps: { thickness: number; cornerRadius: number }) => void;
   onReset?: () => void;
   disabled?: boolean;
-  selectionCount?: number;
 }
 
 export const BorderEditor = ({
@@ -16,8 +15,7 @@ export const BorderEditor = ({
   initialCornerRadius = 0,
   onChange,
   onReset,
-  disabled = false,
-  selectionCount = 1
+  disabled = false
 }: BorderEditorProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [thickness, setThickness] = useState(initialThickness);

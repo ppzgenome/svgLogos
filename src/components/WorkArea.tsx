@@ -1226,7 +1226,6 @@ export const WorkArea = () => {
                   }
                 }}
                 disabled={isApplyingBorder || selectedLogos.size === 0}
-                selectionCount={selectedLogos.size}
               />
             </div>
 
