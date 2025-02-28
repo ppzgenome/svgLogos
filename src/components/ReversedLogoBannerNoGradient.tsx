@@ -3,13 +3,13 @@ import { searchMultipleLogos } from '../services/logoService'
 
 // List of brand logos to display
 const brandLogos = [
-  'tesla', 'nvidia', 'google', 'reddit', 'microsoft', 
-  'amazon', 'stripe', 'toyota', 'target', 'spacex', 
-  'cocacola', 'mcdonalds', 'apple', 'disney', 'mercedes', 
-  'meta', 'visa', 'netflix'
+  'starbucks', 'nike', 'adobe', 'pepsi',
+  'bankofamerica', 'goldmansachs', 'burgerking', 'nasa',
+  'instagram', 'openai', 'anthropic', 'amc', 'sony', 'samsung',
+  'oracle', 'sap', 'paypal', 'mastercard', 'accenture', 'honda'
 ]
 
-export const LogoBanner = () => {
+export const ReversedLogoBannerNoGradient = () => {
   const [logos, setLogos] = useState<Array<{ id: string; url: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -41,26 +41,29 @@ export const LogoBanner = () => {
 
   return (
     <div className="logo-banner bg-white py-4 overflow-hidden">
-      <div className="logo-scroll">
+      <div className="logo-scroll-reverse">
         {/* First set of logos */}
         <div className="logo-container">
-          {logos.map((logo, index) => (
+          {logos.map((logo) => (
             <div key={logo.id} className="logo-item">
               <div 
                 className="svg-logo-wrapper"
                 style={{ 
-                  '--svg-url': `url(${logo.url})`,
                   width: '100px',
                   height: '32px'
-                } as React.CSSProperties}
+                }}
               >
                 <img 
                   src={logo.url} 
                   alt="Brand Logo" 
                   className="svg-logo"
-                  style={{ opacity: 0 }}
+                  style={{ 
+                    opacity: 1,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain'
+                  }}
                 />
-                <div className={`svg-logo-gradient-${(index % 4) + 1}`}></div>
               </div>
             </div>
           ))}
@@ -68,23 +71,26 @@ export const LogoBanner = () => {
         
         {/* Duplicate set for seamless looping */}
         <div className="logo-container">
-          {logos.map((logo, index) => (
+          {logos.map((logo) => (
             <div key={`dup-${logo.id}`} className="logo-item">
               <div 
                 className="svg-logo-wrapper"
                 style={{ 
-                  '--svg-url': `url(${logo.url})`,
                   width: '100px',
                   height: '32px'
-                } as React.CSSProperties}
+                }}
               >
                 <img 
                   src={logo.url} 
                   alt="Brand Logo" 
                   className="svg-logo"
-                  style={{ opacity: 0 }}
+                  style={{ 
+                    opacity: 1,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain'
+                  }}
                 />
-                <div className={`svg-logo-gradient-${(index % 4) + 1}`}></div>
               </div>
             </div>
           ))}

@@ -4,8 +4,9 @@ import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefres
 // Unused icons would be imported here if needed
 import { searchMultipleLogos, searchLogoAlternative } from '../services/logoService'
 import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip, downloadLogosAsPng } from '../services/fileService'
-import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, resetSvgDimensions } from '../services/svgService'
+import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, resetSvgDimensions, addSvgBorder, removeSvgBorder, BorderProperties } from '../services/svgService'
 import { GradientDefinition } from '../types/gradients'
+import { BorderEditor } from './BorderEditor'
 import { convertPixelsToPhysicalUnits } from '../utils/unitConversion'
 import { ColorPicker } from './ColorPicker'
 import { DimensionEditor } from './DimensionEditor'
@@ -33,6 +34,7 @@ interface Logo {
   color?: string // Store the applied color
   gradient?: GradientDefinition // Store the applied gradient
   isChangingDimensions?: boolean
+  border?: BorderProperties // Store the applied border properties
 }
 
 const MAX_LOGOS = 15
@@ -55,6 +57,9 @@ export const WorkArea = () => {
   const [_batchPresetUnit, _setBatchPresetUnit] = useState<DimensionUnit>('px')
   const [multiWidth, setMultiWidth] = useState(0)
   const [multiHeight, setMultiHeight] = useState(0)
+  const [borderThickness, setBorderThickness] = useState(0)
+  const [borderCornerRadius, setBorderCornerRadius] = useState(0)
+  const [isApplyingBorder, setIsApplyingBorder] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const errorTimerRef = useRef<number | null>(null)
@@ -435,14 +440,26 @@ export const WorkArea = () => {
               const originalUrl = logo.originalUrl || logo.url
               
               // Generate new colored SVG
-              const coloredUrl = await changeSvgColor(originalUrl, color)
+              let coloredUrl = await changeSvgColor(originalUrl, color)
+              
+              // Reapply border if it exists
+              if (logo.border && logo.border.thickness > 0) {
+                coloredUrl = await addSvgBorder(
+                  coloredUrl,
+                  logo.border.thickness,
+                  logo.border.cornerRadius,
+                  color, // Use the new color for the border
+                  undefined // No gradient for the border
+                )
+              }
               
               return {
                 ...logo,
                 url: coloredUrl,
                 originalUrl: originalUrl,
                 color: color,
-                gradient: undefined // Clear any gradient when applying solid color
+                gradient: undefined, // Clear any gradient when applying solid color
+                border: logo.border // Preserve border properties
               }
             }
             return logo
@@ -489,14 +506,26 @@ export const WorkArea = () => {
               const originalUrl = logo.originalUrl || logo.url
               
               // Generate new gradient SVG
-              const gradientUrl = await changeSvgGradient(originalUrl, gradient)
+              let gradientUrl = await changeSvgGradient(originalUrl, gradient)
+              
+              // Reapply border if it exists
+              if (logo.border && logo.border.thickness > 0) {
+                gradientUrl = await addSvgBorder(
+                  gradientUrl,
+                  logo.border.thickness,
+                  logo.border.cornerRadius,
+                  undefined, // No solid color for the border
+                  gradient // Use the new gradient for the border
+                )
+              }
               
               return {
                 ...logo,
                 url: gradientUrl,
                 originalUrl: originalUrl,
                 color: undefined, // Clear any solid color when applying gradient
-                gradient: gradient
+                gradient: gradient,
+                border: logo.border // Preserve border properties
               }
             }
             return logo
@@ -528,12 +557,25 @@ export const WorkArea = () => {
         logos.map(async (logo, index) => {
           if (selectedLogos.has(index) && logo.originalUrl) {
             // Reset to original URL
-            const resetUrl = await resetSvgColor(logo.originalUrl)
+            let resetUrl = await resetSvgColor(logo.originalUrl)
+            
+            // Reapply border if it exists
+            if (logo.border && logo.border.thickness > 0) {
+              resetUrl = await addSvgBorder(
+                resetUrl,
+                logo.border.thickness,
+                logo.border.cornerRadius,
+                undefined, // No color for the border
+                undefined // No gradient for the border
+              )
+            }
             
             return {
               ...logo,
               url: resetUrl,
-              color: undefined
+              color: undefined,
+              gradient: undefined,
+              border: logo.border // Preserve border properties
             }
           }
           return logo
@@ -588,15 +630,27 @@ export const WorkArea = () => {
               resizedUrl = await changeSvgGradient(resizedUrl, logo.gradient)
             }
             
+            // Reapply border if it exists
+            if (logo.border && logo.border.thickness > 0) {
+              resizedUrl = await addSvgBorder(
+                resizedUrl,
+                logo.border.thickness,
+                logo.border.cornerRadius,
+                logo.color,
+                logo.gradient
+              )
+            }
+            
             return {
               ...logo,
               url: resizedUrl,
               originalUrl: originalUrl,
               dimensions: dimensions,
               originalDimensions: originalDimensions,
-              // Preserve color and gradient properties
+              // Preserve color, gradient, and border properties
               color: logo.color,
-              gradient: logo.gradient
+              gradient: logo.gradient,
+              border: logo.border
             }
           }
           return logo
@@ -640,14 +694,26 @@ export const WorkArea = () => {
               scaledUrl = await changeSvgGradient(scaledUrl, logo.gradient)
             }
             
+            // Reapply border if it exists
+            if (logo.border && logo.border.thickness > 0) {
+              scaledUrl = await addSvgBorder(
+                scaledUrl,
+                logo.border.thickness,
+                logo.border.cornerRadius,
+                logo.color,
+                logo.gradient
+              )
+            }
+            
             return {
               ...logo,
               url: scaledUrl,
               originalUrl: originalUrl,
               dimensions: { width: newWidth, height: newHeight },
-              // Preserve color and gradient properties
+              // Preserve color, gradient, and border properties
               color: logo.color,
-              gradient: logo.gradient
+              gradient: logo.gradient,
+              border: logo.border
             }
           }
           return logo
@@ -682,13 +748,25 @@ export const WorkArea = () => {
               resetUrl = await changeSvgGradient(resetUrl, logo.gradient)
             }
             
+            // Reapply border if it exists
+            if (logo.border && logo.border.thickness > 0) {
+              resetUrl = await addSvgBorder(
+                resetUrl, 
+                logo.border.thickness, 
+                logo.border.cornerRadius,
+                logo.color,
+                logo.gradient
+              )
+            }
+            
             return {
               ...logo,
               url: resetUrl,
               dimensions: { ...logo.originalDimensions },
-              // Preserve color and gradient properties
+              // Preserve color, gradient, and border properties
               color: logo.color,
-              gradient: logo.gradient
+              gradient: logo.gradient,
+              border: logo.border
             }
           }
           return logo
@@ -703,6 +781,114 @@ export const WorkArea = () => {
     }
   }
   
+  // Debounce timer for border changes
+  const borderChangeTimerRef = useRef<number | null>(null);
+  
+  const applyBorderToSelectedLogos = async (
+    borderProps: { thickness: number; cornerRadius: number },
+    showLoading = false
+  ) => {
+    if (selectedLogos.size === 0) return
+    
+    // Clear any existing timer
+    if (borderChangeTimerRef.current) {
+      window.clearTimeout(borderChangeTimerRef.current);
+      borderChangeTimerRef.current = null;
+    }
+    
+    // Set a new timer to debounce the border change
+    borderChangeTimerRef.current = window.setTimeout(async () => {
+      // Only show loading state for non-incremental changes
+      if (showLoading) {
+        setIsApplyingBorder(true);
+      }
+      
+      setBorderThickness(borderProps.thickness);
+      setBorderCornerRadius(borderProps.cornerRadius);
+      setError(null);
+      
+      try {
+        const updatedLogos = await Promise.all(
+          logos.map(async (logo, index) => {
+            if (selectedLogos.has(index)) {
+              // Store original URL if not already stored
+              const originalUrl = logo.originalUrl || logo.url;
+              
+              // Start with the current URL
+              let updatedUrl = logo.url;
+              
+              // If there's an existing border, remove it first
+              if (logo.border && logo.border.thickness > 0) {
+                updatedUrl = await removeSvgBorder(updatedUrl);
+              }
+              
+              // Add new border if thickness > 0
+              if (borderProps.thickness > 0) {
+                updatedUrl = await addSvgBorder(
+                  updatedUrl, 
+                  borderProps.thickness, 
+                  borderProps.cornerRadius,
+                  logo.color,
+                  logo.gradient
+                );
+              }
+              
+              return {
+                ...logo,
+                url: updatedUrl,
+                originalUrl: originalUrl,
+                border: borderProps.thickness > 0 ? { ...borderProps } : undefined
+              };
+            }
+            return logo;
+          })
+        );
+        
+        setLogos(updatedLogos);
+      } catch (err) {
+        setError('Failed to apply border to logos');
+      } finally {
+        if (showLoading) {
+          setIsApplyingBorder(false);
+        }
+        borderChangeTimerRef.current = null;
+      }
+    }, 150); // 150ms debounce delay
+  };
+  
+  const resetSelectedLogosBorder = async () => {
+    if (selectedLogos.size === 0) return;
+    
+    setIsApplyingBorder(true);
+    setError(null);
+    
+    try {
+      const updatedLogos = await Promise.all(
+        logos.map(async (logo, index) => {
+          if (selectedLogos.has(index) && logo.border && logo.border.thickness > 0) {
+            // Remove border
+            const noBorderUrl = await removeSvgBorder(logo.url);
+            
+            return {
+              ...logo,
+              url: noBorderUrl,
+              border: undefined
+            };
+          }
+          return logo;
+        })
+      );
+      
+      setLogos(updatedLogos);
+      setBorderThickness(0);
+      setBorderCornerRadius(0);
+    } catch (err) {
+      setError('Failed to reset logo borders');
+    } finally {
+      setIsApplyingBorder(false);
+    }
+  };
+  
 
   return (
     <section className="section-bg pt-20 pb-8">
@@ -713,11 +899,11 @@ export const WorkArea = () => {
           viewport={{ once: true }}
           className="card"
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Logo Canvas 🪄</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6"></h2>
           
-          <div className="flex flex-col gap-4 mb-8">
-            <div className="flex gap-4">
-              <div className="relative flex-1">
+          <div className="mb-8">
+            <div className="flex flex-wrap items-center justify-start md:justify-center gap-3 mb-4">
+              <div className="relative min-w-[240px] max-w-[320px] flex-1">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
@@ -728,57 +914,42 @@ export const WorkArea = () => {
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Enter company names (comma-separated, maximum 15 items)"
-                  className="input flex-1 pl-10 py-2 bg-gray-50 border-gray-300 focus:ring-2 focus:ring-primary focus:bg-white shadow-sm"
+                  placeholder="Tesla, Nvidia, Nike, etc. (max 15 / search)."
+                  className="input w-full pl-10 py-2 bg-gray-50 border-gray-300 focus:ring-2 focus:ring-primary focus:bg-white shadow-sm"
                   disabled={isLoading}
                 />
               </div>
               <button
                 onClick={handleSearch}
-                className="btn-primary whitespace-nowrap relative"
+                className="btn-primary whitespace-nowrap px-4 py-2 min-w-[120px]"
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <FiLoader className="w-5 h-5 animate-spin" />
+                  <FiLoader className="w-5 h-5 animate-spin inline mr-1" />
                 ) : (
                   'Logo Search'
                 )}
               </button>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-gray-500 text-sm font-medium">or</span>
-              <div className="flex-1 h-px bg-gray-200" />
-            </div>
-
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex gap-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".svg"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={isLoading}
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="btn-secondary flex items-center gap-2"
-                  disabled={isLoading}
-                >
-                  <FiUpload className="w-4 h-4" />
-                  Upload SVG Files
-                </button>
-              </div>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm text-gray-500"
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".svg"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={isLoading}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-secondary flex items-center gap-2 whitespace-nowrap px-3 py-2 min-w-[150px]"
+                disabled={isLoading}
               >
+                <FiUpload className="w-4 h-4 flex-shrink-0" />
+                <span>Upload SVG Files</span>
+              </button>
+              <span className="text-sm text-gray-500 self-center">
                 or drag SVG files into grid
-              </motion.p>
+              </span>
             </div>
           </div>
 
@@ -910,7 +1081,7 @@ export const WorkArea = () => {
                             {/* Selection indicator for selected logos */}
                             {isSelected && (
                               <div className="absolute top-2 left-2">
-                                <div className="p-1 bg-primary rounded-full">
+                                <div className="p-2 bg-primary rounded-full shadow-lg">
                                   <FiCheck className="w-4 h-4 text-white" />
                                 </div>
                               </div>
@@ -974,183 +1145,208 @@ export const WorkArea = () => {
           </div>
 
           {/* Logo selection counter and controls */}
-          <div className="flex justify-between items-center w-full max-w-[75%] mx-auto mt-4 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-600 mr-2">
-                {selectedLogos.size}/{logos.length} selected
+          <div className="w-full max-w-[75%] mx-auto mt-4 mb-4">
+            <div className="flex flex-wrap justify-start gap-3">
+              <span className="text-sm font-medium text-gray-600 self-center mr-1">
+                {selectedLogos.size}/{logos.length} Logos selected
               </span>
+              
               <button
                 onClick={handleSelectAll}
-                className="btn-secondary flex items-center gap-2"
+                className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[100px]"
                 disabled={selectedLogos.size === logos.length || logos.length === 0}
                 title="Select all logos"
               >
-                <FiCheck className="w-4 h-4" />
-                Select All
+                <FiCheck className="w-4 h-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">Select All</span>
               </button>
+              
               <button
                 onClick={handleDeselectAll}
-                className="btn-secondary flex items-center gap-2"
+                className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[100px]"
                 disabled={selectedLogos.size === 0}
                 title="Deselect all logos"
               >
-                <FiX className="w-4 h-4" />
-                Deselect All
+                <FiX className="w-4 h-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">Deselect All</span>
               </button>
-            </div>
-            <div className="flex gap-2">
+              
               <button
                 onClick={handleDownloadPng}
-                className="btn-secondary flex items-center gap-2"
+                className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[130px]"
                 disabled={isLoading || isDownloadingPng || logos.length === 0}
               >
                 {isDownloadingPng ? (
-                  <FiLoader className="w-4 h-4 animate-spin" />
+                  <FiLoader className="w-4 h-4 animate-spin flex-shrink-0" />
                 ) : (
-                  <FiDownload className="w-4 h-4" />
+                  <FiDownload className="w-4 h-4 flex-shrink-0" />
                 )}
-                Download (PNG)
+                <span className="whitespace-nowrap">Download (PNG)</span>
               </button>
+              
               <button
                 onClick={handleDownload}
-                className="btn-secondary flex items-center gap-2"
+                className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[130px]"
                 disabled={isLoading || isDownloading || logos.length === 0}
               >
                 {isDownloading ? (
-                  <FiLoader className="w-4 h-4 animate-spin" />
+                  <FiLoader className="w-4 h-4 animate-spin flex-shrink-0" />
                 ) : (
-                  <FiDownload className="w-4 h-4" />
+                  <FiDownload className="w-4 h-4 flex-shrink-0" />
                 )}
-                Download (SVG)
+                <span className="whitespace-nowrap">Download (SVG)</span>
               </button>
+              
               <button
                 onClick={handleClearAll}
-                className="btn-secondary flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[100px] text-red-600 hover:text-red-700 hover:bg-red-50"
                 disabled={isLoading || logos.length === 0}
               >
-                <FiTrash2 className="w-4 h-4" />
-                Clear All
+                <FiTrash2 className="w-4 h-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">Clear All</span>
               </button>
             </div>
           </div>
 
           {/* Editor Cards - Below grid */}
-          <div className="mt-6 w-full max-w-[75%] mx-auto flex flex-wrap gap-4">
-            {/* Color Editor Card */}
-            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex-1 max-w-md">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Custom Aesthetics
-              </h3>
-              
-              <p className="text-sm text-gray-500 mb-3">
-                Select one or more logos to transform:
-              </p>
-              
-              {/* Colors Title */}
-              <div className="flex items-center mb-3">
-                <div className="w-full">
-                  <span className="text-sm font-medium">Colors</span>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-6">
-                <div>
-                  <ColorPicker
-                    initialColor={selectedColor}
-                    onChange={(color) => {
-                      setSelectedColor(color)
-                      if (selectedLogos.size > 0) {
-                        // Only show loading for button clicks, not for text input changes
-                        const isButtonClick = color !== selectedColor && color.length === 7;
-                        applyColorToSelectedLogos(color, isButtonClick)
-                      }
-                    }}
-                    onGradientChange={(gradient) => {
-                      if (selectedLogos.size > 0) {
-                        // Only show loading for preset gradient selections, not for custom gradient adjustments
-                        const isPresetGradient = !gradient.id.startsWith('custom-');
-                        applyGradientToSelectedLogos(gradient, isPresetGradient)
-                      }
-                    }}
-                    disabled={isApplyingColor}
-                    canEditGradient={true} // Always allow editing gradient stoppers regardless of selection
-                  />
-                </div>
-                
-                <div className="flex items-end">
-                  <button
-                    onClick={resetSelectedLogosColor}
-                    className="btn-secondary text-sm"
-                    disabled={isApplyingColor || selectedLogos.size === 0}
-                  >
-                    {isApplyingColor && colorOperationType === 'reset' ? (
-                      <FiLoader className="w-4 h-4 animate-spin mr-2 inline" />
-                    ) : null}
-                    Reset
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Dimension Editor Card */}
-            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex-1 max-w-md">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">
-                Dimensions
-              </h3>
-              
-              {/* Always render the DimensionEditor component */}
-              <DimensionEditor
-                initialDimensions={
-                  selectedLogos.size === 1 
-                    ? logos[Array.from(selectedLogos)[0]].dimensions 
-                    : selectedLogos.size > 1 
-                      ? { width: multiWidth, height: multiHeight }
-                      : { width: 0, height: 0 } // Default dimensions when no logos selected
-                }
-                originalDimensions={
-                  selectedLogos.size === 1 
-                    ? logos[Array.from(selectedLogos)[0]].originalDimensions 
-                    : selectedLogos.size > 1
-                      ? (() => {
-                          // Calculate average original dimensions for multiple logos
-                          const selected = Array.from(selectedLogos)
-                            .map(index => logos[index])
-                            .filter(logo => logo && logo.originalDimensions);
-                          
-                          if (selected.length > 0) {
-                            const totalWidth = selected.reduce((sum, logo) => 
-                              sum + (logo.originalDimensions?.width || 0), 0);
-                            const totalHeight = selected.reduce((sum, logo) => 
-                              sum + (logo.originalDimensions?.height || 0), 0);
-                            
-                            return {
-                              width: Math.round(totalWidth / selected.length),
-                              height: Math.round(totalHeight / selected.length)
-                            };
-                          }
-                          return undefined;
-                        })()
-                      : undefined
-                }
-                onChange={(dimensions) => {
+          <div className="mt-6 w-full max-w-[75%] mx-auto">
+            {/* Border Editor Card - Centered and above other cards */}
+            <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 mb-4 mx-auto">
+              <BorderEditor
+                initialThickness={borderThickness}
+                initialCornerRadius={borderCornerRadius}
+                onChange={(borderProps) => {
                   if (selectedLogos.size > 0) {
-                    applyDimensionsToSelectedLogos(dimensions);
-                  }
-                }}
-                onScaleChange={(scalePercentage) => {
-                  if (selectedLogos.size > 0) {
-                    scaleSelectedLogos(scalePercentage);
+                    applyBorderToSelectedLogos(borderProps);
                   }
                 }}
                 onReset={() => {
                   if (selectedLogos.size > 0) {
-                    resetSelectedLogosDimensions();
+                    resetSelectedLogosBorder();
                   }
                 }}
-                disabled={isChangingDimensions || selectedLogos.size === 0}
-                selectionCount={selectedLogos.size}
-                noLogos={logos.length === 0}
+                disabled={isApplyingBorder || selectedLogos.size === 0}
               />
+            </div>
+
+            {/* Existing cards in a flex container */}
+            <div className="flex flex-wrap gap-4">
+              {/* Color Editor Card */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex-1 max-w-md">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Aesthetics
+                </h3>
+                
+                <p className="text-sm text-gray-500 mb-3">
+                  Select one or more logos to transform:
+                </p>
+                
+                {/* Colors Title */}
+                <div className="flex items-center mb-3">
+                  <div className="w-full">
+                    <span className="text-sm font-medium">Colors</span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-6">
+                  <div>
+                    <ColorPicker
+                      initialColor={selectedColor}
+                      onChange={(color) => {
+                        setSelectedColor(color)
+                        if (selectedLogos.size > 0) {
+                          // Only show loading for button clicks, not for text input changes
+                          const isButtonClick = color !== selectedColor && color.length === 7;
+                          applyColorToSelectedLogos(color, isButtonClick)
+                        }
+                      }}
+                      onGradientChange={(gradient) => {
+                        if (selectedLogos.size > 0) {
+                          // Only show loading for preset gradient selections, not for custom gradient adjustments
+                          const isPresetGradient = !gradient.id.startsWith('custom-');
+                          applyGradientToSelectedLogos(gradient, isPresetGradient)
+                        }
+                      }}
+                      disabled={isApplyingColor}
+                      canEditGradient={true} // Always allow editing gradient stoppers regardless of selection
+                    />
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <button
+                      onClick={resetSelectedLogosColor}
+                      className="btn-secondary text-sm"
+                      disabled={isApplyingColor || selectedLogos.size === 0}
+                    >
+                      {isApplyingColor && colorOperationType === 'reset' ? (
+                        <FiLoader className="w-4 h-4 animate-spin mr-2 inline" />
+                      ) : null}
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Dimension Editor Card */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 flex-1 max-w-md">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">
+                  Dimensions
+                </h3>
+                
+                {/* Always render the DimensionEditor component */}
+                <DimensionEditor
+                  initialDimensions={
+                    selectedLogos.size === 1 
+                      ? logos[Array.from(selectedLogos)[0]].dimensions 
+                      : selectedLogos.size > 1 
+                        ? { width: multiWidth, height: multiHeight }
+                        : { width: 0, height: 0 } // Default dimensions when no logos selected
+                  }
+                  originalDimensions={
+                    selectedLogos.size === 1 
+                      ? logos[Array.from(selectedLogos)[0]].originalDimensions 
+                      : selectedLogos.size > 1
+                        ? (() => {
+                            // Calculate average original dimensions for multiple logos
+                            const selected = Array.from(selectedLogos)
+                              .map(index => logos[index])
+                              .filter(logo => logo && logo.originalDimensions);
+                            
+                            if (selected.length > 0) {
+                              const totalWidth = selected.reduce((sum, logo) => 
+                                sum + (logo.originalDimensions?.width || 0), 0);
+                              const totalHeight = selected.reduce((sum, logo) => 
+                                sum + (logo.originalDimensions?.height || 0), 0);
+                              
+                              return {
+                                width: Math.round(totalWidth / selected.length),
+                                height: Math.round(totalHeight / selected.length)
+                              };
+                            }
+                            return undefined;
+                          })()
+                        : undefined
+                  }
+                  onChange={(dimensions) => {
+                    if (selectedLogos.size > 0) {
+                      applyDimensionsToSelectedLogos(dimensions);
+                    }
+                  }}
+                  onScaleChange={(scalePercentage) => {
+                    if (selectedLogos.size > 0) {
+                      scaleSelectedLogos(scalePercentage);
+                    }
+                  }}
+                  onReset={() => {
+                    if (selectedLogos.size > 0) {
+                      resetSelectedLogosDimensions();
+                    }
+                  }}
+                  disabled={isChangingDimensions || selectedLogos.size === 0}
+                  selectionCount={selectedLogos.size}
+                  noLogos={logos.length === 0}
+                />
+              </div>
             </div>
           </div>
         </motion.div>

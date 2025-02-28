@@ -234,6 +234,14 @@ export const downloadLogosAsPng = async (logos: LogoWithDimensions[]): Promise<v
           fileName = `logo-${index + 1}.png`
         }
 
+        // Fetch SVG content
+        const response = await fetch(logo.url)
+        const svgText = await response.text()
+        
+        // Create SVG data URL (this avoids CORS issues)
+        const svgBlob = new Blob([svgText], { type: 'image/svg+xml' })
+        const svgDataUrl = URL.createObjectURL(svgBlob)
+        
         // Create an image element to load the SVG
         const img = new Image()
         
@@ -264,15 +272,20 @@ export const downloadLogosAsPng = async (logos: LogoWithDimensions[]): Promise<v
               } else {
                 reject(new Error('Failed to convert canvas to blob'))
               }
+              // Clean up
+              URL.revokeObjectURL(svgDataUrl)
             }, 'image/png')
           }
           
-          img.onerror = () => {
+          img.onerror = (e) => {
+            console.error('Image load error:', e)
             reject(new Error(`Failed to load image for ${logo.id}`))
+            URL.revokeObjectURL(svgDataUrl)
           }
           
-          // Set the source to the SVG URL
-          img.src = logo.url
+          // Set crossOrigin to anonymous to avoid tainted canvas
+          img.crossOrigin = 'anonymous'
+          img.src = svgDataUrl
         })
       } catch (error) {
         console.error(`Failed to convert logo ${logo.id} to PNG:`, error)
