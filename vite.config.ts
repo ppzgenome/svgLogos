@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 3002,
     // Configure CORS for development server
     cors: {
       origin: '*',

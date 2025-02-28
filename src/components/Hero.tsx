@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { LogoBanner } from './LogoBanner'
+import { ReversedLogoBannerNoGradient } from './ReversedLogoBannerNoGradient'
 
 const words = ['Consistent', 'Efficient', 'Sleek']
 
@@ -44,6 +45,8 @@ export const Hero = () => {
         </motion.div>
       </div>
       <LogoBanner />
+      <div className="mt-2"></div>
+      <ReversedLogoBannerNoGradient />
     </section>
   )
 }

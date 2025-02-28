@@ -255,12 +255,6 @@ export const ColorPicker = ({
     }
   }
   
-  const handleDirectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setCustomGradientDirection(e.target.value)
-    // Apply gradient immediately when direction changes
-    applyCustomGradient()
-  }
-  
   const handleStopMouseDown = (stop: 'start' | 'end') => (e: React.MouseEvent) => {
     if (disabled) return
     
@@ -623,20 +617,74 @@ export const ColorPicker = ({
               </div>
               
               {/* Direction Selector */}
-              <div className="flex items-center gap-2 mt-2 mb-2">
-                <span className="text-xs text-gray-500 mr-2">Direction:</span>
-                <select 
-                  value={customGradientDirection} 
-                  onChange={handleDirectionChange}
-                  className="input text-sm py-1"
-                  disabled={disabled}
-                >
-                  <option value="to right">Horizontal →</option>
-                  <option value="to bottom">Vertical ↓</option>
-                  <option value="to bottom right">Diagonal ↘</option>
-                  <option value="to top right">Diagonal ↗</option>
-                </select>
+              <div className="flex items-center mt-2 mb-2">
+                <div className="w-20 flex justify-end">
+                  <span className="text-xs text-gray-500 mr-3">Direction</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setCustomGradientDirection('to right');
+                      applyCustomGradient();
+                    }}
+                    className={`px-2 py-1 text-xs ${
+                      customGradientDirection === 'to right' 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    } rounded`}
+                    disabled={disabled}
+                    title="Horizontal"
+                  >
+                    →
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomGradientDirection('to bottom');
+                      applyCustomGradient();
+                    }}
+                    className={`px-2 py-1 text-xs ${
+                      customGradientDirection === 'to bottom' 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    } rounded`}
+                    disabled={disabled}
+                    title="Vertical"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomGradientDirection('to bottom right');
+                      applyCustomGradient();
+                    }}
+                    className={`px-2 py-1 text-xs ${
+                      customGradientDirection === 'to bottom right' 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    } rounded`}
+                    disabled={disabled}
+                    title="Diagonal Down"
+                  >
+                    ↘
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCustomGradientDirection('to top right');
+                      applyCustomGradient();
+                    }}
+                    className={`px-2 py-1 text-xs ${
+                      customGradientDirection === 'to top right' 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    } rounded`}
+                    disabled={disabled}
+                    title="Diagonal Up"
+                  >
+                    ↗
+                  </button>
+                </div>
               </div>
+              
             </div>
           </div>
         )}
