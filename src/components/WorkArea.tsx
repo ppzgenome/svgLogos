@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefreshCw } from 'react-icons/fi'
+import { FiX, FiEye, FiLoader, FiUpload, FiTrash2, FiCheck, FiDownload, FiRefreshCw, FiChevronDown } from 'react-icons/fi'
 // Unused icons would be imported here if needed
 import { searchMultipleLogos, searchLogoAlternative } from '../services/logoService'
-import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip, downloadLogosAsPng } from '../services/fileService'
+import { processUploadedFiles, getSvgDimensions, downloadLogosAsZip, downloadLogosAsPng, downloadLogosAsJpeg, downloadLogosAsWebP } from '../services/fileService'
 import { changeSvgColor, changeSvgGradient, resetSvgColor, changeSvgDimensions, resetSvgDimensions, addSvgBorder, removeSvgBorder, BorderProperties } from '../services/svgService'
 import { GradientDefinition } from '../types/gradients'
 import { BorderEditor } from './BorderEditor'
@@ -46,6 +46,10 @@ export const WorkArea = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isDownloadingPng, setIsDownloadingPng] = useState(false)
+  const [isDownloadingJpeg, setIsDownloadingJpeg] = useState(false)
+  const [isDownloadingWebP, setIsDownloadingWebP] = useState(false)
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false)
+  const downloadMenuRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -59,6 +63,7 @@ export const WorkArea = () => {
   const [multiHeight, setMultiHeight] = useState(0)
   const [borderThickness, setBorderThickness] = useState(0)
   const [borderCornerRadius, setBorderCornerRadius] = useState(0)
+  const [borderLineStyle, setBorderLineStyle] = useState('solid')
   const [isApplyingBorder, setIsApplyingBorder] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dropZoneRef = useRef<HTMLDivElement>(null)
@@ -108,6 +113,20 @@ export const WorkArea = () => {
       }
     }
   }, [error])
+  
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
+        setIsDownloadMenuOpen(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   const fetchDimensions = useCallback(async (logo: Logo) => {
     if (!logo.needsDimensions) return logo
@@ -369,6 +388,34 @@ export const WorkArea = () => {
       setIsDownloadingPng(false)
     }
   }
+  
+  const handleDownloadJpeg = async () => {
+    if (logos.length === 0) return
+    
+    setIsDownloadingJpeg(true)
+    try {
+      // Pass the complete logo objects to ensure dimensions are preserved
+      await downloadLogosAsJpeg(logos)
+    } catch (err) {
+      setError('Failed to download logos as JPEG')
+    } finally {
+      setIsDownloadingJpeg(false)
+    }
+  }
+  
+  const handleDownloadWebP = async () => {
+    if (logos.length === 0) return
+    
+    setIsDownloadingWebP(true)
+    try {
+      // Pass the complete logo objects to ensure dimensions are preserved
+      await downloadLogosAsWebP(logos)
+    } catch (err) {
+      setError('Failed to download logos as WebP')
+    } finally {
+      setIsDownloadingWebP(false)
+    }
+  }
 
   const handleRefresh = async (logo: Logo, index: number) => {
     if (!logo.searchTerm) {
@@ -449,7 +496,8 @@ export const WorkArea = () => {
                   logo.border.thickness,
                   logo.border.cornerRadius,
                   color, // Use the new color for the border
-                  undefined // No gradient for the border
+                  undefined, // No gradient for the border
+                  logo.border.lineStyle // Preserve the line style
                 )
               }
               
@@ -515,7 +563,8 @@ export const WorkArea = () => {
                   logo.border.thickness,
                   logo.border.cornerRadius,
                   undefined, // No solid color for the border
-                  gradient // Use the new gradient for the border
+                  gradient, // Use the new gradient for the border
+                  logo.border.lineStyle // Preserve the line style
                 )
               }
               
@@ -566,7 +615,8 @@ export const WorkArea = () => {
                 logo.border.thickness,
                 logo.border.cornerRadius,
                 undefined, // No color for the border
-                undefined // No gradient for the border
+                undefined, // No gradient for the border
+                logo.border.lineStyle // Preserve the line style
               )
             }
             
@@ -637,7 +687,8 @@ export const WorkArea = () => {
                 logo.border.thickness,
                 logo.border.cornerRadius,
                 logo.color,
-                logo.gradient
+                logo.gradient,
+                logo.border.lineStyle // Preserve the line style
               )
             }
             
@@ -701,7 +752,8 @@ export const WorkArea = () => {
                 logo.border.thickness,
                 logo.border.cornerRadius,
                 logo.color,
-                logo.gradient
+                logo.gradient,
+                logo.border.lineStyle // Preserve the line style
               )
             }
             
@@ -755,7 +807,8 @@ export const WorkArea = () => {
                 logo.border.thickness, 
                 logo.border.cornerRadius,
                 logo.color,
-                logo.gradient
+                logo.gradient,
+                logo.border.lineStyle // Preserve the line style
               )
             }
             
@@ -785,7 +838,7 @@ export const WorkArea = () => {
   const borderChangeTimerRef = useRef<number | null>(null);
   
   const applyBorderToSelectedLogos = async (
-    borderProps: { thickness: number; cornerRadius: number },
+    borderProps: { thickness: number; cornerRadius: number; lineStyle?: string },
     showLoading = false
   ) => {
     if (selectedLogos.size === 0) return
@@ -805,6 +858,9 @@ export const WorkArea = () => {
       
       setBorderThickness(borderProps.thickness);
       setBorderCornerRadius(borderProps.cornerRadius);
+      if (borderProps.lineStyle) {
+        setBorderLineStyle(borderProps.lineStyle);
+      }
       setError(null);
       
       try {
@@ -829,7 +885,8 @@ export const WorkArea = () => {
                   borderProps.thickness, 
                   borderProps.cornerRadius,
                   logo.color,
-                  logo.gradient
+                  logo.gradient,
+                  borderProps.lineStyle || 'solid'
                 );
               }
               
@@ -882,6 +939,7 @@ export const WorkArea = () => {
       setLogos(updatedLogos);
       setBorderThickness(0);
       setBorderCornerRadius(0);
+      setBorderLineStyle('solid');
     } catch (err) {
       setError('Failed to reset logo borders');
     } finally {
@@ -1171,31 +1229,73 @@ export const WorkArea = () => {
                 <span className="whitespace-nowrap">Deselect All</span>
               </button>
               
-              <button
-                onClick={handleDownloadPng}
-                className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[130px]"
-                disabled={isLoading || isDownloadingPng || logos.length === 0}
-              >
-                {isDownloadingPng ? (
-                  <FiLoader className="w-4 h-4 animate-spin flex-shrink-0" />
-                ) : (
-                  <FiDownload className="w-4 h-4 flex-shrink-0" />
+              <div className="relative" ref={downloadMenuRef}>
+                <button
+                  onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                  className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[130px]"
+                  disabled={isLoading || isDownloading || isDownloadingPng || isDownloadingJpeg || isDownloadingWebP || logos.length === 0}
+                >
+                  {isDownloading || isDownloadingPng || isDownloadingJpeg || isDownloadingWebP ? (
+                    <FiLoader className="w-4 h-4 animate-spin flex-shrink-0" />
+                  ) : (
+                    <FiDownload className="w-4 h-4 flex-shrink-0" />
+                  )}
+                  <span className="whitespace-nowrap">Download</span>
+                  <FiChevronDown className={`w-4 h-4 transition-transform ${isDownloadMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {/* Dropdown Menu */}
+                {isDownloadMenuOpen && (
+                  <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          handleDownload();
+                          setIsDownloadMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        disabled={isDownloading}
+                      >
+                        <span className="mr-2">SVG</span>
+                        {isDownloading && <FiLoader className="w-3 h-3 animate-spin ml-auto" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDownloadPng();
+                          setIsDownloadMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        disabled={isDownloadingPng}
+                      >
+                        <span className="mr-2">PNG</span>
+                        {isDownloadingPng && <FiLoader className="w-3 h-3 animate-spin ml-auto" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDownloadJpeg();
+                          setIsDownloadMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        disabled={isDownloadingJpeg}
+                      >
+                        <span className="mr-2">JPEG</span>
+                        {isDownloadingJpeg && <FiLoader className="w-3 h-3 animate-spin ml-auto" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDownloadWebP();
+                          setIsDownloadMenuOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        disabled={isDownloadingWebP}
+                      >
+                        <span className="mr-2">WebP</span>
+                        {isDownloadingWebP && <FiLoader className="w-3 h-3 animate-spin ml-auto" />}
+                      </button>
+                    </div>
+                  </div>
                 )}
-                <span className="whitespace-nowrap">Download (PNG)</span>
-              </button>
-              
-              <button
-                onClick={handleDownload}
-                className="btn-secondary flex items-center gap-2 h-10 px-3 min-w-[130px]"
-                disabled={isLoading || isDownloading || logos.length === 0}
-              >
-                {isDownloading ? (
-                  <FiLoader className="w-4 h-4 animate-spin flex-shrink-0" />
-                ) : (
-                  <FiDownload className="w-4 h-4 flex-shrink-0" />
-                )}
-                <span className="whitespace-nowrap">Download (SVG)</span>
-              </button>
+              </div>
               
               <button
                 onClick={handleClearAll}
@@ -1215,6 +1315,7 @@ export const WorkArea = () => {
               <BorderEditor
                 initialThickness={borderThickness}
                 initialCornerRadius={borderCornerRadius}
+                initialLineStyle={borderLineStyle}
                 onChange={(borderProps) => {
                   if (selectedLogos.size > 0) {
                     applyBorderToSelectedLogos(borderProps);

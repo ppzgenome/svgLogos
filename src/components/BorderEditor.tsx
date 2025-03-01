@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface BorderEditorProps {
   initialThickness?: number;
   initialCornerRadius?: number;
-  onChange: (borderProps: { thickness: number; cornerRadius: number }) => void;
+  initialLineStyle?: string;
+  onChange: (borderProps: { thickness: number; cornerRadius: number; lineStyle?: string }) => void;
   onReset?: () => void;
   disabled?: boolean;
 }
@@ -13,6 +14,7 @@ interface BorderEditorProps {
 export const BorderEditor = ({
   initialThickness = 0,
   initialCornerRadius = 0,
+  initialLineStyle = 'solid',
   onChange,
   onReset,
   disabled = false
@@ -20,6 +22,7 @@ export const BorderEditor = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [thickness, setThickness] = useState(initialThickness);
   const [cornerRadius, setCornerRadius] = useState(initialCornerRadius);
+  const [lineStyle, setLineStyle] = useState(initialLineStyle);
   
   // Refs for input fields to maintain focus
   const thicknessInputRef = useRef<HTMLInputElement>(null);
@@ -31,16 +34,17 @@ export const BorderEditor = ({
   // Effect to apply changes when shouldApplyChanges is true
   useEffect(() => {
     if (shouldApplyChanges) {
-      onChange({ thickness, cornerRadius });
+      onChange({ thickness, cornerRadius, lineStyle });
       setShouldApplyChanges(false);
     }
-  }, [shouldApplyChanges, thickness, cornerRadius, onChange]);
+  }, [shouldApplyChanges, thickness, cornerRadius, lineStyle, onChange]);
   
   // Update state when props change
   useEffect(() => {
     setThickness(initialThickness);
     setCornerRadius(initialCornerRadius);
-  }, [initialThickness, initialCornerRadius]);
+    setLineStyle(initialLineStyle);
+  }, [initialThickness, initialCornerRadius, initialLineStyle]);
   
   // Debounce timer for border changes
   const borderChangeTimerRef = useRef<number | null>(null);
@@ -55,7 +59,7 @@ export const BorderEditor = ({
     }
     
     borderChangeTimerRef.current = window.setTimeout(() => {
-      onChange({ thickness: newThickness, cornerRadius });
+      onChange({ thickness: newThickness, cornerRadius, lineStyle });
       borderChangeTimerRef.current = null;
     }, 300);
   };
@@ -70,20 +74,35 @@ export const BorderEditor = ({
     }
     
     borderChangeTimerRef.current = window.setTimeout(() => {
-      onChange({ thickness, cornerRadius: newCornerRadius });
+      onChange({ thickness, cornerRadius: newCornerRadius, lineStyle });
+      borderChangeTimerRef.current = null;
+    }, 300);
+  };
+  
+  const handleLineStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLineStyle = e.target.value;
+    setLineStyle(newLineStyle);
+    
+    // Apply changes with debounce to maintain focus but still update
+    if (borderChangeTimerRef.current) {
+      window.clearTimeout(borderChangeTimerRef.current);
+    }
+    
+    borderChangeTimerRef.current = window.setTimeout(() => {
+      onChange({ thickness, cornerRadius, lineStyle: newLineStyle });
       borderChangeTimerRef.current = null;
     }, 300);
   };
   
   const handleBorderBlur = () => {
     // Only call onChange when the input loses focus
-    onChange({ thickness, cornerRadius });
+    onChange({ thickness, cornerRadius, lineStyle });
   };
   
   const handleBorderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Call onChange when Enter key is pressed
     if (e.key === 'Enter') {
-      onChange({ thickness, cornerRadius });
+      onChange({ thickness, cornerRadius, lineStyle });
       e.currentTarget.blur();
     }
   };
@@ -94,7 +113,8 @@ export const BorderEditor = ({
     } else {
       setThickness(0);
       setCornerRadius(0);
-      onChange({ thickness: 0, cornerRadius: 0 });
+      setLineStyle('solid');
+      onChange({ thickness: 0, cornerRadius: 0, lineStyle: 'solid' });
     }
   };
   
@@ -169,6 +189,24 @@ export const BorderEditor = ({
                   className="input w-16 text-center"
                   disabled={disabled}
                 />
+              </div>
+              
+              <label htmlFor="lineStyle" className="text-sm font-medium mr-4">
+                Line Style
+              </label>
+              <div className="mr-6">
+                <select
+                  value={lineStyle}
+                  onChange={handleLineStyleChange}
+                  className="input w-28"
+                  disabled={disabled || thickness === 0}
+                >
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                  <option value="dashdot">Dash-dot</option>
+                  <option value="double">Double</option>
+                </select>
               </div>
               
               <button

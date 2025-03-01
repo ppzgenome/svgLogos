@@ -21,6 +21,7 @@ export interface GradientDefinition {
 export interface BorderProperties {
   thickness: number;
   cornerRadius: number;
+  lineStyle?: string; // 'solid', 'dashed', 'dotted', 'dashdot', 'double'
 }
 
 /**
@@ -270,6 +271,7 @@ export const resetSvgDimensions = async (originalSvgUrl: string): Promise<string
  * @param cornerRadius Corner radius in pixels
  * @param color Border color (hex format) or undefined if using gradient
  * @param gradient Gradient definition or undefined if using solid color
+ * @param lineStyle Line style for the border ('solid', 'dashed', 'dotted', 'dashdot', 'double')
  * @returns Promise resolving to a new object URL for the SVG with border
  */
 export const addSvgBorder = async (
@@ -277,7 +279,8 @@ export const addSvgBorder = async (
   thickness: number, 
   cornerRadius: number,
   color?: string,
-  gradient?: GradientDefinition
+  gradient?: GradientDefinition,
+  lineStyle?: string
 ): Promise<string> => {
   // Fetch the SVG content
   const response = await fetch(svgUrl);
@@ -343,6 +346,31 @@ export const addSvgBorder = async (
   borderRect.setAttribute('ry', cornerRadius.toString());
   borderRect.setAttribute('fill', 'none');
   borderRect.setAttribute('stroke-width', thickness.toString());
+  
+  // Apply line style if specified
+  if (lineStyle) {
+    switch (lineStyle) {
+      case 'dashed':
+        borderRect.setAttribute('stroke-dasharray', `${thickness * 3} ${thickness * 2}`);
+        break;
+      case 'dotted':
+        borderRect.setAttribute('stroke-dasharray', `${thickness} ${thickness}`);
+        break;
+      case 'dashdot':
+        borderRect.setAttribute('stroke-dasharray', `${thickness * 3} ${thickness} ${thickness} ${thickness}`);
+        break;
+      case 'double':
+        // For double line, we use a thinner stroke and a larger stroke-dasharray
+        borderRect.setAttribute('stroke-width', (thickness * 0.6).toString());
+        borderRect.setAttribute('stroke-dasharray', `${thickness * 1.5} ${thickness * 0.5}`);
+        break;
+      case 'solid':
+      default:
+        // Solid line is the default, no stroke-dasharray needed
+        borderRect.removeAttribute('stroke-dasharray');
+        break;
+    }
+  }
   
   // Adjust the viewBox to include both the padding and border
   // This ensures the entire SVG (including border and padding) is visible

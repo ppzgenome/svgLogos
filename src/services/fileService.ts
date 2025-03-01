@@ -176,6 +176,21 @@ export const downloadLogosAsZip = async (logos: LogoWithDimensions[]): Promise<v
             svgElement.setAttribute('width', logo.dimensions.width.toString())
             svgElement.setAttribute('height', logo.dimensions.height.toString())
             
+            // Ensure there's no background color or fill that might be causing a white background
+            svgElement.removeAttribute('background')
+            svgElement.removeAttribute('background-color')
+            svgElement.style.background = 'none'
+            svgElement.style.backgroundColor = 'transparent'
+            
+            // Remove any rect elements that might be acting as a background
+            const possibleBackgrounds = svgElement.querySelectorAll('rect[width="100%"][height="100%"], rect[x="0"][y="0"]')
+            possibleBackgrounds.forEach(rect => {
+              const fill = rect.getAttribute('fill')
+              if (fill && (fill.toLowerCase() === '#ffffff' || fill.toLowerCase() === 'white')) {
+                rect.remove()
+              }
+            })
+            
             // Convert back to text
             const serializer = new XMLSerializer()
             const modifiedSvgText = serializer.serializeToString(doc)
@@ -300,6 +315,199 @@ export const downloadLogosAsPng = async (logos: LogoWithDimensions[]): Promise<v
   const link = document.createElement('a')
   link.href = downloadUrl
   link.download = 'pngLogos.zip'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(downloadUrl)
+}
+
+export const downloadLogosAsJpeg = async (logos: LogoWithDimensions[]): Promise<void> => {
+  const zip = new JSZip()
+
+  // Create downloads folder
+  const folder = zip.folder('jpegLogos')
+  if (!folder) throw new Error('Failed to create zip folder')
+
+  // Convert each SVG to JPEG and add to zip
+  await Promise.all(
+    logos.map(async (logo, index) => {
+      try {
+        // Determine file name based on searchTerm if available
+        let fileName: string
+        if (logo.searchTerm) {
+          // Normalize the search term to create a valid filename
+          const normalizedName = logo.searchTerm.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+          fileName = `${normalizedName}.jpg`
+        } else {
+          // Fallback to index-based naming if no search term is available
+          fileName = `logo-${index + 1}.jpg`
+        }
+
+        // Fetch SVG content
+        const response = await fetch(logo.url)
+        const svgText = await response.text()
+        
+        // Create SVG data URL (this avoids CORS issues)
+        const svgBlob = new Blob([svgText], { type: 'image/svg+xml' })
+        const svgDataUrl = URL.createObjectURL(svgBlob)
+        
+        // Create an image element to load the SVG
+        const img = new Image()
+        
+        // Create a canvas to render the image
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Failed to get canvas context')
+        
+        // Set dimensions based on logo dimensions or default to 300x300
+        const width = logo.dimensions?.width || 300
+        const height = logo.dimensions?.height || 300
+        
+        canvas.width = width
+        canvas.height = height
+        
+        // Wait for the image to load
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // Fill with white background since JPEGs don't support transparency
+            ctx.fillStyle = 'white'
+            ctx.fillRect(0, 0, width, height)
+            
+            // Draw the image on the canvas
+            ctx.drawImage(img, 0, 0, width, height)
+            
+            // Convert canvas to JPEG blob
+            canvas.toBlob((blob) => {
+              if (blob) {
+                folder.file(fileName, blob)
+                resolve()
+              } else {
+                reject(new Error('Failed to convert canvas to blob'))
+              }
+              // Clean up
+              URL.revokeObjectURL(svgDataUrl)
+            }, 'image/jpeg', 0.9) // 0.9 quality (90%)
+          }
+          
+          img.onerror = (e) => {
+            console.error('Image load error:', e)
+            reject(new Error(`Failed to load image for ${logo.id}`))
+            URL.revokeObjectURL(svgDataUrl)
+          }
+          
+          // Set crossOrigin to anonymous to avoid tainted canvas
+          img.crossOrigin = 'anonymous'
+          img.src = svgDataUrl
+        })
+      } catch (error) {
+        console.error(`Failed to convert logo ${logo.id} to JPEG:`, error)
+      }
+    })
+  )
+
+  // Generate and download zip file
+  const content = await zip.generateAsync({ type: 'blob' })
+  const downloadUrl = URL.createObjectURL(content)
+  
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = 'jpegLogos.zip'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(downloadUrl)
+}
+
+export const downloadLogosAsWebP = async (logos: LogoWithDimensions[]): Promise<void> => {
+  const zip = new JSZip()
+
+  // Create downloads folder
+  const folder = zip.folder('webpLogos')
+  if (!folder) throw new Error('Failed to create zip folder')
+
+  // Convert each SVG to WebP and add to zip
+  await Promise.all(
+    logos.map(async (logo, index) => {
+      try {
+        // Determine file name based on searchTerm if available
+        let fileName: string
+        if (logo.searchTerm) {
+          // Normalize the search term to create a valid filename
+          const normalizedName = logo.searchTerm.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+          fileName = `${normalizedName}.webp`
+        } else {
+          // Fallback to index-based naming if no search term is available
+          fileName = `logo-${index + 1}.webp`
+        }
+
+        // Fetch SVG content
+        const response = await fetch(logo.url)
+        const svgText = await response.text()
+        
+        // Create SVG data URL (this avoids CORS issues)
+        const svgBlob = new Blob([svgText], { type: 'image/svg+xml' })
+        const svgDataUrl = URL.createObjectURL(svgBlob)
+        
+        // Create an image element to load the SVG
+        const img = new Image()
+        
+        // Create a canvas to render the image
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Failed to get canvas context')
+        
+        // Set dimensions based on logo dimensions or default to 300x300
+        const width = logo.dimensions?.width || 300
+        const height = logo.dimensions?.height || 300
+        
+        canvas.width = width
+        canvas.height = height
+        
+        // Wait for the image to load
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // Clear the canvas (WebP supports transparency)
+            ctx.clearRect(0, 0, width, height)
+            
+            // Draw the image on the canvas
+            ctx.drawImage(img, 0, 0, width, height)
+            
+            // Convert canvas to WebP blob
+            canvas.toBlob((blob) => {
+              if (blob) {
+                folder.file(fileName, blob)
+                resolve()
+              } else {
+                reject(new Error('Failed to convert canvas to blob'))
+              }
+              // Clean up
+              URL.revokeObjectURL(svgDataUrl)
+            }, 'image/webp', 0.9) // 0.9 quality (90%)
+          }
+          
+          img.onerror = (e) => {
+            console.error('Image load error:', e)
+            reject(new Error(`Failed to load image for ${logo.id}`))
+            URL.revokeObjectURL(svgDataUrl)
+          }
+          
+          // Set crossOrigin to anonymous to avoid tainted canvas
+          img.crossOrigin = 'anonymous'
+          img.src = svgDataUrl
+        })
+      } catch (error) {
+        console.error(`Failed to convert logo ${logo.id} to WebP:`, error)
+      }
+    })
+  )
+
+  // Generate and download zip file
+  const content = await zip.generateAsync({ type: 'blob' })
+  const downloadUrl = URL.createObjectURL(content)
+  
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = 'webpLogos.zip'
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
