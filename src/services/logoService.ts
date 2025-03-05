@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { searchInternalRepo, saveLogoToInternalRepo, trackFailedSearch, InternalLogoSearchResult } from './internalLogoService'
 
 interface LogoSearchResult {
   id: string
@@ -141,6 +142,32 @@ const normalizeTerm = (term: string): string => {
     .replace(/[^a-z0-9]/g, '')
 }
 
+// Helper to fetch SVG content from a URL
+const fetchSvgContent = async (url: string): Promise<string> => {
+  try {
+    const response = await axios.get(url, { 
+      timeout: 5000,
+      headers: { 
+        Accept: 'image/svg+xml',
+        'User-Agent': 'SVGLogos/1.0 (https://github.com/ppzgenome/svgLogos)'
+      }
+    })
+    
+    if (response.status !== 200) {
+      throw new Error(`Failed to fetch SVG: ${response.status}`)
+    }
+    
+    const responseText = typeof response.data === 'string' 
+      ? response.data 
+      : JSON.stringify(response.data)
+    
+    return responseText
+  } catch (error) {
+    console.error(`Error fetching SVG content from ${url}:`, error)
+    throw error
+  }
+}
+
 export const searchLogo = async (term: string): Promise<LogoSearchResult> => {
   const normalizedTerm = normalizeTerm(term)
   
@@ -148,6 +175,19 @@ export const searchLogo = async (term: string): Promise<LogoSearchResult> => {
   const cachedResult = searchCache.get(normalizedTerm)
   if (cachedResult) {
     return cachedResult
+  }
+  
+  // First check our internal repository
+  try {
+    const internalResult = await searchInternalRepo(normalizedTerm)
+    if (internalResult) {
+      // Cache the result
+      searchCache.set(normalizedTerm, internalResult)
+      return internalResult
+    }
+  } catch (error) {
+    console.error(`Error searching internal repo for ${normalizedTerm}:`, error)
+    // Continue to external sources if internal search fails
   }
 
   // Initialize used sources for this term if not exists
@@ -185,6 +225,16 @@ export const searchLogo = async (term: string): Promise<LogoSearchResult> => {
           
           // Cache the result
           searchCache.set(normalizedTerm, result)
+          
+          // Save to internal repository
+          try {
+            const svgContent = await fetchSvgContent(url)
+            await saveLogoToInternalRepo(term, result, svgContent)
+          } catch (saveError) {
+            console.error(`Error saving logo to internal repo:`, saveError)
+            // Continue even if saving fails
+          }
+          
           return result
         }
       }
@@ -199,7 +249,13 @@ export const searchLogo = async (term: string): Promise<LogoSearchResult> => {
     }
   }
 
-  // If no SVG is found, throw an error
+  // If no SVG is found, track the failed search and throw an error
+  try {
+    await trackFailedSearch(term)
+  } catch (error) {
+    console.error(`Error tracking failed search:`, error)
+  }
+  
   throw new Error(`No SVG logo found for: ${term}`)
 }
 
@@ -208,6 +264,19 @@ export const searchLogoAlternative = async (term: string, currentUrl: string, cu
   
   // Clear the cache for this term to force a new search
   searchCache.delete(normalizedTerm)
+  
+  // First check our internal repository if the current logo is not from internal
+  if (currentProvider !== 'internal') {
+    try {
+      const internalResult = await searchInternalRepo(normalizedTerm)
+      if (internalResult && internalResult.url !== currentUrl) {
+        return internalResult
+      }
+    } catch (error) {
+      console.error(`Error searching internal repo for alternative:`, error)
+      // Continue to external sources if internal search fails
+    }
+  }
   
   // Get used sources for this term
   const termUsedSources = usedSources.get(normalizedTerm) || new Set()
@@ -265,6 +334,15 @@ export const searchLogoAlternative = async (term: string, currentUrl: string, cu
             usedSources.set(normalizedTerm, new Set())
           }
           usedSources.get(normalizedTerm)?.add(providerId)
+          
+          // Save to internal repository
+          try {
+            const svgContent = await fetchSvgContent(url)
+            await saveLogoToInternalRepo(term, result, svgContent)
+          } catch (saveError) {
+            console.error(`Error saving alternative logo to internal repo:`, saveError)
+            // Continue even if saving fails
+          }
           
           // Don't cache this result to allow for more refreshes
           return result
