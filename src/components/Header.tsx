@@ -1,6 +1,10 @@
 import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { AboutModal } from './AboutModal'
 
 export const Header = () => {
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
+
   return (
     <header className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -14,12 +18,16 @@ export const Header = () => {
           </motion.div>
           
           <div className="flex gap-4">
-            <button className="btn-secondary">
-              Login
+            <button 
+              className="btn-secondary"
+              onClick={() => setIsAboutModalOpen(true)}
+            >
+              About
             </button>
-            <button className="btn-primary">
-              Sign Up
-            </button>
+            <AboutModal 
+              isOpen={isAboutModalOpen}
+              onClose={() => setIsAboutModalOpen(false)}
+            />
           </div>
         </div>
       </div>

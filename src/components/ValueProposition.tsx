@@ -13,8 +13,8 @@ const valueCards = [
     icon: FiSliders,
   },
   {
-    title: 'SVG Logo Format',
-    description: 'Crisp, high-quality, and resolution-independent.',
+    title: 'Multi-format Logos',
+    description: 'High-quality SVG, PNG, JPEG, WebP',
     icon: FiCode,
   },
 ]
