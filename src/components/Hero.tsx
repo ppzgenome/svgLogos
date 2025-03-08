@@ -2,18 +2,53 @@ import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { LogoBanner } from './LogoBanner'
 import { ReversedLogoBannerNoGradient } from './ReversedLogoBannerNoGradient'
+import { listLogosFromFolder } from '../services/internalLogoService'
 
 const words = ['Consistent', 'Efficient', 'Sleek']
 
 export const Hero = () => {
   const [currentWord, setCurrentWord] = useState(0)
+  const [firstBannerLogoData, setFirstBannerLogoData] = useState<Array<{ id: string; url: string }>>([])
+  const [secondBannerLogoData, setSecondBannerLogoData] = useState<Array<{ id: string; url: string }>>([])
+  const [isLoading, setIsLoading] = useState(true)
 
+  // Word animation effect
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentWord((prev) => (prev + 1) % words.length)
     }, 2000)
 
     return () => clearInterval(interval)
+  }, [])
+
+  // Fetch logos from Supabase storage folders
+  useEffect(() => {
+    const fetchLogos = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Fetch logos from the first banner folder
+        const firstBannerLogos = await listLogosFromFolder('Scrolling banner logos 1')
+        
+        // Fetch logos from the second banner folder
+        const secondBannerLogos = await listLogosFromFolder('Scrolling banner logos 2')
+        
+        // Filter out any placeholder logos
+        const filteredSecondBannerLogos = secondBannerLogos.filter(
+          logo => !logo.url.includes('emptyFolderPlaceholder')
+        )
+        
+        // Set the logo data for each banner
+        setFirstBannerLogoData(firstBannerLogos.map(logo => ({ id: logo.id, url: logo.url })))
+        setSecondBannerLogoData(filteredSecondBannerLogos.map(logo => ({ id: logo.id, url: logo.url })))
+      } catch (error) {
+        console.error('Failed to fetch logos from Supabase storage:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchLogos()
   }, [])
 
   return (
@@ -44,9 +79,9 @@ export const Hero = () => {
           </p>
         </motion.div>
       </div>
-      <LogoBanner />
+      <LogoBanner logos={firstBannerLogoData} isLoading={isLoading} />
       <div className="mt-2"></div>
-      <ReversedLogoBannerNoGradient />
+      <ReversedLogoBannerNoGradient logos={secondBannerLogoData} isLoading={isLoading} />
     </section>
   )
 }
