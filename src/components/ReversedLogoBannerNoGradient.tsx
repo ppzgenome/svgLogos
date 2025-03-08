@@ -1,33 +1,9 @@
-import { useEffect, useState } from 'react'
-import { searchMultipleLogos } from '../services/logoService'
+interface ReversedLogoBannerNoGradientProps {
+  logos: Array<{ id: string; url: string }>
+  isLoading: boolean
+}
 
-// List of brand logos to display
-const brandLogos = [
-  'starbucks', 'nike', 'adobe', 'pepsi',
-  'bankofamerica', 'goldmansachs', 'burgerking', 'nasa',
-  'instagram', 'openai', 'anthropic', 'amc', 'sony', 'samsung',
-  'oracle', 'sap', 'paypal', 'mastercard', 'accenture', 'honda'
-]
-
-export const ReversedLogoBannerNoGradient = () => {
-  const [logos, setLogos] = useState<Array<{ id: string; url: string }>>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchLogos = async () => {
-      try {
-        setIsLoading(true)
-        const result = await searchMultipleLogos(brandLogos)
-        setLogos(result.successes.map(logo => ({ id: logo.id, url: logo.url })))
-      } catch (error) {
-        console.error('Failed to fetch logos:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchLogos()
-  }, [])
+export const ReversedLogoBannerNoGradient = ({ logos, isLoading }: ReversedLogoBannerNoGradientProps) => {
 
   if (isLoading) {
     return (

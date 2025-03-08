@@ -1,33 +1,9 @@
-import { useEffect, useState } from 'react'
-import { searchMultipleLogos } from '../services/logoService'
+interface LogoBannerProps {
+  logos: Array<{ id: string; url: string }>
+  isLoading: boolean
+}
 
-// List of brand logos to display
-const brandLogos = [
-  'tesla', 'nvidia', 'google', 'reddit', 'microsoft', 
-  'amazon', 'stripe', 'toyota', 'target', 'spacex', 
-  'cocacola', 'mcdonalds', 'apple', 'disney', 'mercedes', 
-  'meta', 'visa', 'netflix'
-]
-
-export const LogoBanner = () => {
-  const [logos, setLogos] = useState<Array<{ id: string; url: string }>>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchLogos = async () => {
-      try {
-        setIsLoading(true)
-        const result = await searchMultipleLogos(brandLogos)
-        setLogos(result.successes.map(logo => ({ id: logo.id, url: logo.url })))
-      } catch (error) {
-        console.error('Failed to fetch logos:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchLogos()
-  }, [])
+export const LogoBanner = ({ logos, isLoading }: LogoBannerProps) => {
 
   if (isLoading) {
     return (

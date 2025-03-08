@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { searchInternalRepo, saveLogoToInternalRepo, trackFailedSearch, InternalLogoSearchResult } from './internalLogoService'
+import { searchInternalRepo, saveLogoToInternalRepo, trackFailedSearch } from './internalLogoService'
 
 interface LogoSearchResult {
   id: string
