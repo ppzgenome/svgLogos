@@ -13,8 +13,13 @@ export const Header = () => {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-2xl font-bold logo-gradient"
+            className="text-2xl font-bold logo-gradient flex items-center gap-2"
           >
+            <img 
+              src="https://bxegwxrggebnjnowjvol.supabase.co/storage/v1/object/public/internal-logo-repo/favicon/favicon%20512x512.png" 
+              alt="SVG Logos" 
+              className="w-6 h-6" 
+            />
             svgLogos
           </motion.div>
           
