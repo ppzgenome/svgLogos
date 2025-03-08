@@ -266,7 +266,7 @@ export async function saveLogoToInternalRepo(
     const fileName = `${normalizedTerm}-${uuidv4()}.svg`
     
     // Upload the SVG to storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(fileName, new Blob([svgContent], { type: 'image/svg+xml' }), {
         contentType: 'image/svg+xml',
@@ -293,7 +293,7 @@ export async function saveLogoToInternalRepo(
     const visualSignature = extractVisualSignature(svgContent)
     
     // Create a record in the database
-    const { data: insertData, error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from(LOGO_SEARCHES_TABLE)
       .insert([
         {
@@ -383,6 +383,45 @@ export async function initializeStorage(): Promise<void> {
     }
   } catch (error) {
     console.error('Error initializing storage:', error)
+  }
+}
+
+/**
+ * List logos from a specific folder in storage
+ */
+export async function listLogosFromFolder(folderName: string): Promise<Array<{ id: string; url: string }>> {
+  try {
+    const { data: files, error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .list(folderName)
+
+    if (error) {
+      console.error('Error listing logos from folder:', error)
+      return []
+    }
+
+    if (!files || files.length === 0) {
+      return []
+    }
+
+    // Get public URLs for all files
+    const logos = await Promise.all(
+      files.map(async (file) => {
+        const { data: urlData } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .getPublicUrl(`${folderName}/${file.name}`)
+
+        return {
+          id: file.id || `${folderName}-${file.name}`,
+          url: urlData?.publicUrl || ''
+        }
+      })
+    )
+
+    return logos.filter(logo => logo.url !== '')
+  } catch (error) {
+    console.error('Error in listLogosFromFolder:', error)
+    return []
   }
 }
 

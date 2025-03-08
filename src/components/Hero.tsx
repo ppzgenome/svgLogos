@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { LogoBanner } from './LogoBanner'
 import { ReversedLogoBannerNoGradient } from './ReversedLogoBannerNoGradient'
 import { listLogosFromFolder } from '../services/internalLogoService'
 
 const words = ['Consistent', 'Efficient', 'Sleek']
 
-export const Hero = () => {
+export const Hero: React.FC = () => {
   const [currentWord, setCurrentWord] = useState(0)
   const [firstBannerLogoData, setFirstBannerLogoData] = useState<Array<{ id: string; url: string }>>([])
   const [secondBannerLogoData, setSecondBannerLogoData] = useState<Array<{ id: string; url: string }>>([])
