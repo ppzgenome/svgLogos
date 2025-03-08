@@ -1,5 +1,6 @@
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
+import { BuyMeCoffeeButton } from './BuyMeCoffeeButton'
 
 interface AboutModalProps {
   isOpen: boolean
@@ -56,6 +57,21 @@ export const AboutModal = ({ isOpen, onClose }: AboutModalProps) => {
                   <p>
                     Stop wasting time. Start curating with svgLogos!
                   </p>
+                </div>
+
+                {/* Buy Me a Coffee button and QR code */}
+                <div className="mt-6 flex flex-col items-center gap-4">
+                  <BuyMeCoffeeButton />
+                  
+                  {/* QR Code */}
+                  <div className="mt-2 flex flex-col items-center">
+                    <img 
+                      src="https://bxegwxrggebnjnowjvol.supabase.co/storage/v1/object/public/internal-logo-repo//bmc_qr.png" 
+                      alt="Buy Me a Coffee QR Code" 
+                      className="w-32 h-32 mt-2"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">Scan to support</p>
+                  </div>
                 </div>
                 
                 <div className="mt-6 flex justify-end">

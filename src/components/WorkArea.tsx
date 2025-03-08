@@ -10,6 +10,7 @@ import { BorderEditor } from './BorderEditor'
 import { convertPixelsToPhysicalUnits } from '../utils/unitConversion'
 import { ColorPicker } from './ColorPicker'
 import { DimensionEditor } from './DimensionEditor'
+import { BuyMeCoffeeButton } from './BuyMeCoffeeButton'
 
 // Type for dimension display units
 type DimensionUnit = 'px' | 'in' | 'mm';
@@ -1449,6 +1450,11 @@ export const WorkArea = () => {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Buy Me a Coffee button */}
+          <div className="mt-8 flex justify-center">
+            <BuyMeCoffeeButton />
           </div>
         </motion.div>
       </div>

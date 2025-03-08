@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { AboutModal } from './AboutModal'
+import { BuyMeCoffeeButton } from './BuyMeCoffeeButton'
 
 export const Header = () => {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
@@ -17,7 +18,8 @@ export const Header = () => {
             svgLogos
           </motion.div>
           
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
+            <BuyMeCoffeeButton />
             <button 
               className="btn-secondary"
               onClick={() => setIsAboutModalOpen(true)}

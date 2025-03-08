@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { BuyMeCoffeeButton } from './BuyMeCoffeeButton'
 
 export const Footer = () => {
   return (
@@ -8,9 +9,12 @@ export const Footer = () => {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center text-gray-600"
+          className="text-center"
         >
-          <p>&copy; {new Date().getFullYear()} svgLogos. All rights reserved.</p>
+          <div className="mb-4">
+            <BuyMeCoffeeButton />
+          </div>
+          <p className="text-gray-600">&copy; {new Date().getFullYear()} svgLogos. All rights reserved.</p>
         </motion.div>
       </div>
     </footer>
