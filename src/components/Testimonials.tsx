@@ -56,7 +56,7 @@ export const Testimonials = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl md:text-4xl font-bold text-center mb-12"
         >
-          What Our Users Say
+          What My Users Say
         </motion.h2>
         
         <div className="testimonial-banner overflow-hidden">
