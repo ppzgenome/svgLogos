@@ -14,7 +14,7 @@ const valueCards = [
   },
   {
     title: 'Multi-format Logos',
-    description: 'High-quality SVG, PNG, JPEG, WebP',
+    description: 'high-quality SVG, PNG, JPEG, WebP formats for all your diverse needs.',
     icon: FiCode,
   },
 ]
